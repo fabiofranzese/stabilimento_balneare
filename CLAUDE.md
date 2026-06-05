@@ -100,6 +100,35 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
 5. Keep the change **scoped to that use case**; reuse existing Entities/`Registro` services — don't duplicate.
 6. Build and run/test, then **stop for review** before starting the next use case.
 
+## Boundary Swing forms — GUI Designer workflow (collaborative)
+
+Swing boundary views use the **IntelliJ GUI Designer** (`.form` + bound `.java`). The `.form` files
+are authored in the IDE by the **user**, not hand-written (hand-authored `.form` files render
+wrong in the designer). Split the work like this:
+
+1. **Claude writes the `.java` class.** Declare the bound fields (root `JPanel` + each widget)
+   **without instantiating them** — IntelliJ's generated `$$$setupUI$$$` initializes them at build
+   time, before the constructor body runs. Wire listeners in the constructor; put window setup in an
+   `apri()` method (`new JFrame(...)`, `setContentPane(pannello…)`, `pack`, `setVisible`). Italian
+   field names (`pannello…`, `campo…`, `bottone…`).
+2. **Claude gives the binding contract.** A short table per form: the `bind-to-class` (FQN), the
+   **root panel** field name, and every component → field-name (+ type). Remind the two usual traps:
+   **bind the root panel** (else `setContentPane(null)` throws) and use a **`JLabel`** for captions,
+   not a `JTextField`.
+3. **User creates the `.form` in the GUI Designer** (New GUI Form → uncheck "Create bound class" →
+   set *Bound class* to the existing class), binding components to the field names above.
+4. **Claude verifies** the generated `.form` against the class: every `binding="…"` matches a field,
+   the root panel is bound, captions are labels, no stray auto-added field (e.g. `cognomeTextField`)
+   or empty `createUIComponents()` left over.
+5. **Claude prettifies the `.form`** (safe cosmetic XML edits the designer accepts): real `margin`
+   (~20–35), `hgap`/`vgap` (~10–15) instead of `-1`, `preferred-size` widths on fields, a bold
+   centered title `JLabel` (`<font size="16-18" style="1"/>`, `horizontalAlignment value="0"`),
+   sized buttons. Preserve every `binding`.
+
+`forms_rt` must stay in `pom.xml` for this. Note: forms are instrumented **only when building
+through IntelliJ** — plain `mvn` builds won't init the fields (NPE) unless a UI-designer Maven
+plugin is added.
+
 ## Guardrails
 
 - Respect the BCED dependency direction — **no upward imports, ever.**
