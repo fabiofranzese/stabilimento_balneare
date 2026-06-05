@@ -15,12 +15,10 @@
 
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
-        <!--
-            Elencare qui le entity man mano che vengono create, es.:
-            <class>it.unina.entity.Cliente</class>
-            <class>it.unina.entity.Gestore</class>
-            <class>it.unina.entity.Prenotazione</class>
-        -->
+        <!-- Elencare qui le entity man mano che vengono create. -->
+        <class>entity.Utente</class>
+        <class>entity.Cliente</class>
+        <class>entity.Gestore</class>
 
         <properties>
 

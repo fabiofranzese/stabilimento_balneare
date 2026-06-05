@@ -7,7 +7,7 @@
 > **The textual project specification has been added as a Markdown file at `docs/diagrams/specifica progetto.md`.** It is the original requirements statement and the top of the analysis pipeline — read it first, alongside the diagrams, when scoping any use case.
 
 > **Stack (confirmed against the professor's reference project):** **Java 21 · Maven · Hibernate ORM 6.6.50.Final (Jakarta Persistence) · MySQL · Swing GUI.**
-> - **Base package:** **`it.unina`** (groupId `it.unina`; entry point `it.unina.Main` at `src/main/java/it/unina/Main.java`).
+> - **Packages:** **flat, no root package** (mirrors the reference): `boundary`, `controller`, `entity`, `database`, `setup` directly under `src/main/java/`. The Maven `groupId` is `it.unina`, but it is **not** used as a Java package prefix. Entry point: **`setup.Main`**.
 > - **Pinned dependencies (mirror the reference):** `org.hibernate.orm:hibernate-core:6.6.50.Final`, `com.mysql:mysql-connector-j:9.4.0`, `com.intellij:forms_rt:7.0.3` (IntelliJ GUI Designer runtime for Swing).
 > - Build: `mvn compile` · Test: `mvn test` · Run: launch the entry class from the IDE (the reference has **no** `exec-maven-plugin`; don't assume `mvn exec:java` is wired up).
 > - Persistence: Hibernate via `src/main/resources/META-INF/persistence.xml` → **MySQL**. Mirror the reference's settings: driver `com.mysql.cj.jdbc.Driver`, URL `jdbc:mysql://127.0.0.1:3306/<schema>`, a named persistence unit (reference uses `boatyardPU`), `hibernate.hbm2ddl.auto=create`, `hibernate.show_sql`/`format_sql=true`. Keep the DB password as a local placeholder, out of VCS.
@@ -24,28 +24,25 @@ Four layers with one-way dependencies only:
 - **Entity (E)** — `…entity`: the domain model from the domain/GRASP class diagrams (GRASP **Information Expert / Creator**). Holds business rules. **Composite** and **State** live here. Pure domain — depends on nothing outward.
 - **Database (D)** — `…database`: a single **generic `GestorePersistenza`** (CRUD + finders over any entity) + **`JpaUtil`** (Singleton). Wraps `EntityManager` and owns transactions internally. Depends on Entity only; returns Entities, never leaks `EntityManager` upward.
 
-> **`Registro…` domain-service classes** (analogues of the reference's `RegistroRimessaggio`/`RegistroPosti`) wrap `GestorePersistenza` with domain logic and are what Controllers call to persist/look up aggregates — there is **no per-aggregate DAO**. A `Registro` bridges domain rules and persistence, so it does not sit in pure Entity; place it with Control (or a thin domain-service tier the Controller owns), following the reference idiom.
+> **`Registro…` domain-service classes** (analogues of the reference's `RegistroRimessaggio`/`RegistroPosti`) wrap `GestorePersistenza` with domain logic and are what Controllers call to persist/look up aggregates — there is **no per-aggregate DAO**. Following the reference (and the «Information Expert» stereotype on the GRASP diagrams), a `Registro` lives in the **`entity`** package; this means it has an `entity → database` dependency — an accepted bend of strict BCED that the reference itself uses.
 
 **Dependency rule:** `B → C → {E, D}` and `D → E`. Never upward. Entities never import B/C/D. Cross-cutting notification crosses outward only through an **interface owned by Entity** (dependency inversion) — see Observer/Adapter below.
 
 ### Package layout
+
+**Create packages only when a use case needs them** — don't pre-create empty placeholders. Current layout (flat, no root package):
 ```
-src/main/java/it/unina/
-├── Main.java                 # entry point (it.unina.Main)
+src/main/java/
 ├── boundary/                 # B: Swing JFrame/forms, one per use-case interaction
 ├── controller/               # C: use-case controllers = Façades (GRASP Controller)
-├── entity/                   # E: domain model
-│   ├── stabilimento/         #    Composite: ComponenteStabilimento / Settore / Postazione
-│   ├── stato/                #    State: PostazioneState (or PrenotazioneState)
-│   ├── notifica/             #    Observer + ServizioNotifica interface (target)
-│   └── ...                   #    Prenotazione, Tariffa, Cliente, Gestore
+├── entity/                   # E: domain model + Registro… domain services
 ├── database/                 # D: GestorePersistenza (generic) + JpaUtil (Singleton)
-├── setup/                    # DB init + test-data seeding (reference idiom: MainInizializzaDatabase, DatiTest…)
-└── infrastructure/notifica/  # Adapter(s) implementing the entity-owned interface (OUR addition — no precedent in the reference)
+└── setup/                    # DB init/seeding + Main (entry point: setup.Main)
 src/main/resources/META-INF/persistence.xml
 ```
+Sub-packages and new layers are added per use case when needed, e.g. `entity/stabilimento` (Composite), `entity/stato` (State), `entity/notifica` (Observer + `ServizioNotifica` interface), and an `infrastructure/notifica` for the Adapter — **none of these exist yet**; create them when their use case is implemented.
 
-`Registro…` domain-service classes live with `controller/` (or a small domain-service tier the Controller owns) — see the BCED note above.
+`Registro…` domain-service classes live in **`entity/`** (reference idiom + «Information Expert») — see the BCED note above.
 
 ## Required design patterns — where each one goes
 
@@ -95,7 +92,7 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
 
 ## Workflow (per use case)
 
-0. Conventions are already confirmed against `docs/reference-project/` (base package `it.unina`, `JpaUtil`, generic `GestorePersistenza` + `Registro`, Swing) — re-skim the reference when implementing a layer to copy its idioms.
+0. Conventions are already confirmed against `docs/reference-project/` (flat packages, `JpaUtil`, generic `GestorePersistenza` + `Registro` in `entity`, Swing) — re-skim the reference when implementing a layer to copy its idioms.
 1. Read the use case's flow of events (+ its sequence diagram if one exists).
 2. Identify the B/C/E/D classes it touches by cross-checking the class diagrams.
 3. Implement **bottom-up**: Entity → Database (`GestorePersistenza`/`Registro`) → Control (`Controller` Façade) → Boundary (Swing form).
@@ -112,9 +109,3 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
 - For new **domain** classes not on the domain/GRASP diagrams: **ask first.** New *infrastructure* plumbing (`Registro` services, adapters, Swing forms) is fine.
 - **Every identifier in Italian** (classes, methods, variables, fields, params, enums, packages) and Italian GUI text/comments — except unavoidable framework APIs. See Conventions.
 - The "Visual Paradigm Enterprise (evaluation copy)" watermark in the diagram images is noise — ignore it.
-
-## Pending alignment (follow-ups, not yet done)
-
-These bring the repo in line with the confirmed stack above — they are code changes, do separately:
-- **`pom.xml`:** lower `maven.compiler.source/target` from **24 → 21**; add dependencies `org.hibernate.orm:hibernate-core:6.6.50.Final`, `com.mysql:mysql-connector-j:9.4.0`, `com.intellij:forms_rt:7.0.3` (currently the pom declares none).
-- **`src/main/resources/META-INF/persistence.xml`:** create it, mirroring the reference (MySQL driver/URL/dialect, named persistence unit, `hbm2ddl.auto=create`, `show_sql`/`format_sql`), with the password as a local placeholder kept out of VCS.
