@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    TEMPLATE — copiare in `persistence.xml` (stessa cartella) e inserire le proprie credenziali MySQL.
+    Il file `persistence.xml` è ignorato da git: non committare credenziali reali.
+-->
+
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                                 https://jakarta.ee/xml/ns/persistence/persistence_3_1.xsd"
+             version="3.1">
+
+    <persistence-unit name="stabilimentiPU">
+
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!--
+            Elencare qui le entity man mano che vengono create, es.:
+            <class>it.unina.entity.Cliente</class>
+            <class>it.unina.entity.Gestore</class>
+            <class>it.unina.entity.Prenotazione</class>
+        -->
+
+        <properties>
+
+            <property name="jakarta.persistence.jdbc.driver"
+                      value="com.mysql.cj.jdbc.Driver"/>
+
+            <property name="jakarta.persistence.jdbc.url"
+                      value="jdbc:mysql://127.0.0.1:3306/stabilimenti_balneari"/>
+
+            <property name="jakarta.persistence.jdbc.user"
+                      value="root"/>
+
+            <!-- Inserire la propria password locale. -->
+            <property name="jakarta.persistence.jdbc.password"
+                      value="LA_TUA_PASSWORD"/>
+
+            <property name="hibernate.hbm2ddl.auto"
+                      value="create"/>
+
+            <property name="hibernate.show_sql"
+                      value="true"/>
+
+            <property name="hibernate.format_sql"
+                      value="true"/>
+
+        </properties>
+
+    </persistence-unit>
+
+</persistence>
