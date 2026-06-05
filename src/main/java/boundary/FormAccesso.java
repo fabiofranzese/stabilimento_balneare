@@ -46,17 +46,13 @@ public class FormAccesso {
 
         switch (esito) {
             case GestoreUtenti.LOGIN_CLIENTE:
-                JOptionPane.showMessageDialog(frame,
-                        "Accesso effettuato come Cliente.",
-                        "Accesso", JOptionPane.INFORMATION_MESSAGE);
                 frame.dispose();
+                new FinestraCliente().apri();
                 break;
 
             case GestoreUtenti.LOGIN_GESTORE:
-                JOptionPane.showMessageDialog(frame,
-                        "Accesso effettuato come Gestore.",
-                        "Accesso", JOptionPane.INFORMATION_MESSAGE);
                 frame.dispose();
+                new FinestraGestore().apri();
                 break;
 
             default:

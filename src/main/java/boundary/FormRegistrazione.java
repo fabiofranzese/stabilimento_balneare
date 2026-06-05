@@ -57,12 +57,10 @@ public class FormRegistrazione {
 
         switch (esito) {
             case GestoreUtenti.REGISTRAZIONE_OK:
-                // La registrazione effettua direttamente l'accesso: l'utente è
-                // ora dentro al sistema come Cliente, senza dover accedere di nuovo.
-                JOptionPane.showMessageDialog(frame,
-                        "Registrazione completata: accesso effettuato come Cliente.",
-                        "Registrazione", JOptionPane.INFORMATION_MESSAGE);
+                // La registrazione effettua direttamente l'accesso: l'utente
+                // entra subito nell'area Cliente, senza dover accedere di nuovo.
                 frame.dispose();
+                new FinestraCliente().apri();
                 break;
 
             case GestoreUtenti.EMAIL_GIA_REGISTRATA:
