@@ -1,5 +1,7 @@
 package boundary;
 
+import controller.GestoreStabilimento;
+
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -7,9 +9,12 @@ import java.awt.event.WindowEvent;
 /*
  * FinestraGestore è la schermata dell'area riservata al Gestore autenticato.
  *
- * Espone i casi d'uso del Gestore: per ora la Configurazione stabilimento; gli
- * altri (definizione tariffe, monitoraggio, visualizzazione prenotazioni
- * ricevute, ...) verranno aggiunti qui in seguito.
+ * Espone i casi d'uso del Gestore: Configurazione stabilimento e Definizione
+ * tariffe; gli altri (monitoraggio, visualizzazione prenotazioni ricevute, ...)
+ * verranno aggiunti qui in seguito.
+ *
+ * La Definizione tariffe è disponibile solo dopo aver configurato lo
+ * stabilimento: il relativo pulsante è abilitato solo se esiste almeno una fila.
  *
  * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FinestraGestore.form):
  * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
@@ -18,6 +23,7 @@ public class FinestraGestore {
 
     private JPanel pannelloGestore;
     private JButton bottoneConfiguraStabilimento;
+    private JButton bottoneDefinisciTariffe;
     private JButton bottoneLogout;
 
     private JFrame frame;
@@ -30,6 +36,12 @@ public class FinestraGestore {
             new FormConfigurazioneStabilimento(frame).apri();
         });
 
+        // Apre il caso d'uso Definizione tariffe, con la stessa logica.
+        bottoneDefinisciTariffe.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormDefinizioneTariffe(frame).apri();
+        });
+
         // Il logout chiude quest'area e riporta alla schermata principale.
         bottoneLogout.addActionListener(e -> tornaAllaSchermataPrincipale());
     }
@@ -38,17 +50,33 @@ public class FinestraGestore {
         frame = new JFrame("Area Gestore");
         frame.setContentPane(pannelloGestore);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Anche chiudendo l'area si torna alla schermata principale.
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                // Anche chiudendo l'area si torna alla schermata principale.
                 new FinestraPrincipale().apri();
             }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+                // A ogni ritorno su quest'area (es. dopo aver configurato lo
+                // stabilimento) si riallinea la disponibilità delle tariffe.
+                aggiornaDisponibilitaTariffe();
+            }
         });
+        aggiornaDisponibilitaTariffe();
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         return frame;
+    }
+
+    /*
+     * La definizione tariffe ha senso solo a stabilimento configurato: il
+     * pulsante è abilitato unicamente se la configurazione è stata effettuata.
+     */
+    private void aggiornaDisponibilitaTariffe() {
+        bottoneDefinisciTariffe.setEnabled(GestoreStabilimento.configurazioneEffettuata());
     }
 
     private void tornaAllaSchermataPrincipale() {

@@ -2,6 +2,9 @@ package entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /*
  * ServizioAggiuntivo è un servizio opzionale dello stabilimento (livello Entity,
  * BCED): es. lettini extra, cabine, parcheggio.
@@ -21,6 +24,14 @@ public class ServizioAggiuntivo {
     private String descrizione;
 
     private int capacita;
+
+    /*
+     * Le tariffe del servizio (una per stagione). Il servizio "possiede" le sue
+     * tariffe: eliminando il servizio (es. riconfigurando lo stabilimento) le
+     * relative tariffe vengono rimosse a cascata, senza restare orfane.
+     */
+    @OneToMany(mappedBy = "servizio", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TariffaServizioAggiuntivo> tariffe = new ArrayList<>();
 
     public ServizioAggiuntivo() {
     }
@@ -52,6 +63,14 @@ public class ServizioAggiuntivo {
 
     public void setCapacita(int capacita) {
         this.capacita = capacita;
+    }
+
+    public List<TariffaServizioAggiuntivo> getTariffe() {
+        return tariffe;
+    }
+
+    public void setTariffe(List<TariffaServizioAggiuntivo> tariffe) {
+        this.tariffe = tariffe;
     }
 
     @Override

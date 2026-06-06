@@ -22,6 +22,9 @@
         <class>entity.FilaOmbrelloni</class>
         <class>entity.Ombrellone</class>
         <class>entity.ServizioAggiuntivo</class>
+        <class>entity.Tariffa</class>
+        <class>entity.TariffaTipoFila</class>
+        <class>entity.TariffaServizioAggiuntivo</class>
 
         <properties>
 

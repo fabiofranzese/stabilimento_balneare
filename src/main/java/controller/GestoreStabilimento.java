@@ -3,21 +3,27 @@ package controller;
 import entity.FilaOmbrelloni;
 import entity.RegistroOmbrelloni;
 import entity.RegistroServiziAggiuntivi;
+import entity.RegistroTariffe;
 import entity.ServizioAggiuntivo;
+import entity.Stagione;
+import entity.TariffaServizioAggiuntivo;
+import entity.TariffaTipoFila;
 import entity.TipoFila;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /*
  * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso del
- * Gestore. Per ora copre la Configurazione stabilimento; le operazioni di
- * prenotazione/monitoraggio previste dal modello verranno aggiunte qui nei casi
- * d'uso successivi.
+ * Gestore. Per ora copre la Configurazione stabilimento e la Definizione tariffe;
+ * le operazioni di prenotazione/monitoraggio previste dal modello verranno
+ * aggiunte qui nei casi d'uso successivi.
  *
  * Come GestoreUtenti, espone operazioni a grana grossa e scambia con il Boundary
- * solo tipi primitivi (int, String[], int[]): il Boundary non conosce le Entity
- * (FilaOmbrelloni, Ombrellone, ServizioAggiuntivo, TipoFila) e non importa il
- * package entity, rispettando la separazione BCED.
+ * solo tipi primitivi (int, String[], int[], double[]): il Boundary non conosce
+ * le Entity (FilaOmbrelloni, Ombrellone, ServizioAggiuntivo, TipoFila, Tariffa,
+ * Stagione) e non importa il package entity, rispettando la separazione BCED.
  *
  * NOTE: il modello prevede metodi a grana fine (aggiungiFila(tipoFila),
  * aggiungiOmbrellone(fila, numero)); esporli al Boundary farebbe però transitare
@@ -31,6 +37,11 @@ public class GestoreStabilimento {
     public static final int CONFIGURAZIONE_OK = 0;
     public static final int DATI_NON_VALIDI = 1;
     public static final int ERRORE_CONFIGURAZIONE = 2;
+
+    // Esiti della definizione tariffe.
+    public static final int TARIFFE_OK = 10;
+    public static final int TARIFFA_NON_VALIDA = 11;
+    public static final int ERRORE_TARIFFE = 12;
 
     /*
      * Etichette in italiano dei tipi di fila, nell'ordine dell'enum TipoFila:
@@ -174,5 +185,243 @@ public class GestoreStabilimento {
         }
 
         return true;
+    }
+
+    // ===== Definizione tariffe =====
+
+    /*
+     * Etichette in italiano delle stagioni, nell'ordine dell'enum Stagione:
+     * popolano la combo del form (l'indice scelto corrisponde a
+     * Stagione.values()[indice]).
+     */
+    public static String[] stagioni() {
+        Stagione[] valori = Stagione.values();
+        String[] etichette = new String[valori.length];
+
+        for (int i = 0; i < valori.length; i++) {
+            etichette[i] = valori[i].getEtichetta();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Indica se lo stabilimento è già stato configurato (esiste almeno una fila).
+     * La definizione delle tariffe è disponibile solo in tal caso: senza file non
+     * ci sono postazioni da tariffare.
+     */
+    public static boolean configurazioneEffettuata() {
+        return !new RegistroOmbrelloni().getFile().isEmpty();
+    }
+
+    /*
+     * Etichette dei possibili "elementi" di una tariffa, per la combo del form:
+     * prima i tipi di fila effettivamente configurati (ombrelloni), poi i servizi
+     * aggiuntivi esistenti. L'indice scelto identifica l'elemento: 0..numTipi-1
+     * sono i tipi di fila configurati, da numTipi in poi i servizi.
+     */
+    public static String[] elementiTariffa() {
+        List<TipoFila> tipi = tipiFilaConfigurati();
+        List<ServizioAggiuntivo> servizi = serviziOrdinati();
+
+        String[] etichette = new String[tipi.size() + servizi.size()];
+
+        for (int i = 0; i < tipi.size(); i++) {
+            etichette[i] = "Ombrellone — " + tipi.get(i).getEtichetta();
+        }
+        for (int i = 0; i < servizi.size(); i++) {
+            etichette[tipi.size() + i] = "Servizio — " + servizi.get(i).getDescrizione();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Caso d'uso Definizione tariffe.
+     *
+     * Per ogni tariffa indicata (elemento + stagione + costo) imposta o aggiorna
+     * il prezzo (strategia "upsert" nel RegistroTariffe). Gli array sono paralleli.
+     */
+    public static int salvaTariffe(int[] elementiIndici, int[] stagioniIndici, double[] costi) {
+        List<TipoFila> tipi = tipiFilaConfigurati();
+        List<ServizioAggiuntivo> servizi = serviziOrdinati();
+        int numTipi = tipi.size();
+
+        if (!datiTariffeValidi(elementiIndici, stagioniIndici, costi, numTipi + servizi.size())) {
+            return TARIFFA_NON_VALIDA;
+        }
+
+        try {
+            RegistroTariffe registroTariffe = new RegistroTariffe();
+            Stagione[] stagioni = Stagione.values();
+
+            for (int i = 0; i < elementiIndici.length; i++) {
+                int elemento = elementiIndici[i];
+                Stagione stagione = stagioni[stagioniIndici[i]];
+                double costo = costi[i];
+
+                if (elemento < numTipi) {
+                    registroTariffe.definisciTariffaTipoFila(tipi.get(elemento), stagione, costo);
+                } else {
+                    registroTariffe.definisciTariffaServizio(servizi.get(elemento - numTipi), stagione, costo);
+                }
+            }
+
+            return TARIFFE_OK;
+
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ERRORE_TARIFFE;
+        }
+    }
+
+    // --- Lettura delle tariffe correnti (per precaricare il form) ---
+    // I tre metodi restituiscono array paralleli, allineati dallo stesso ordine.
+
+    public static int[] elementiTariffeCorrenti() {
+        List<double[]> righe = righeTariffe();
+        int[] elementi = new int[righe.size()];
+
+        for (int i = 0; i < righe.size(); i++) {
+            elementi[i] = (int) righe.get(i)[0];
+        }
+
+        return elementi;
+    }
+
+    public static int[] stagioniTariffeCorrenti() {
+        List<double[]> righe = righeTariffe();
+        int[] stagioni = new int[righe.size()];
+
+        for (int i = 0; i < righe.size(); i++) {
+            stagioni[i] = (int) righe.get(i)[1];
+        }
+
+        return stagioni;
+    }
+
+    public static double[] costiTariffeCorrenti() {
+        List<double[]> righe = righeTariffe();
+        double[] costi = new double[righe.size()];
+
+        for (int i = 0; i < righe.size(); i++) {
+            costi[i] = righe.get(i)[2];
+        }
+
+        return costi;
+    }
+
+    /*
+     * Validazione delle tariffe: array coerenti in lunghezza e non vuoti, ogni
+     * indice valido, e ogni costo strettamente positivo (flusso: tariffa <= 0
+     * è un errore).
+     */
+    private static boolean datiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
+                                             double[] costi, int numeroElementi) {
+
+        if (elementiIndici == null || stagioniIndici == null || costi == null) {
+            return false;
+        }
+
+        if (elementiIndici.length == 0
+                || elementiIndici.length != stagioniIndici.length
+                || elementiIndici.length != costi.length) {
+            return false;
+        }
+
+        int numeroStagioni = Stagione.values().length;
+        for (int i = 0; i < elementiIndici.length; i++) {
+            if (elementiIndici[i] < 0 || elementiIndici[i] >= numeroElementi) {
+                return false;
+            }
+            if (stagioniIndici[i] < 0 || stagioniIndici[i] >= numeroStagioni) {
+                return false;
+            }
+            if (costi[i] <= 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /*
+     * Costruisce le righe delle tariffe correnti come array {elemento, stagione,
+     * costo}, ordinate in modo deterministico: così i tre metodi di lettura
+     * restituiscono array paralleli allineati anche se le query cambiano ordine.
+     */
+    private static List<double[]> righeTariffe() {
+        List<TipoFila> tipi = tipiFilaConfigurati();
+        int numTipi = tipi.size();
+        List<ServizioAggiuntivo> servizi = serviziOrdinati();
+        RegistroTariffe registroTariffe = new RegistroTariffe();
+        List<double[]> righe = new ArrayList<>();
+
+        for (TariffaTipoFila tariffa : registroTariffe.getTariffeTipoFila()) {
+            int posizione = tipi.indexOf(tariffa.getTipoFila());
+            if (posizione >= 0) {
+                righe.add(new double[]{
+                        posizione,
+                        tariffa.getStagione().ordinal(),
+                        tariffa.getCosto()});
+            }
+        }
+
+        for (TariffaServizioAggiuntivo tariffa : registroTariffe.getTariffeServizio()) {
+            int posizione = indiceServizio(servizi, tariffa.getServizio());
+            if (posizione >= 0) {
+                righe.add(new double[]{
+                        numTipi + posizione,
+                        tariffa.getStagione().ordinal(),
+                        tariffa.getCosto()});
+            }
+        }
+
+        righe.sort((a, b) -> a[0] != b[0]
+                ? Double.compare(a[0], b[0])
+                : Double.compare(a[1], b[1]));
+
+        return righe;
+    }
+
+    /*
+     * Tipi di fila effettivamente configurati (presenti in almeno una fila), in
+     * ordine stabile (ordinale dell'enum). Su questo elenco si basa la codifica
+     * degli indici dei tipi di fila come elementi tariffabili: si possono definire
+     * tariffe solo per i tipi di fila che esistono nello stabilimento.
+     */
+    private static List<TipoFila> tipiFilaConfigurati() {
+        List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
+        List<TipoFila> tipi = new ArrayList<>();
+
+        for (TipoFila tipo : TipoFila.values()) {
+            for (FilaOmbrelloni fila : file) {
+                if (fila.getTipoFila() == tipo) {
+                    tipi.add(tipo);
+                    break;
+                }
+            }
+        }
+
+        return tipi;
+    }
+
+    /*
+     * Servizi aggiuntivi ordinati per id: ordinamento stabile su cui si basa la
+     * codifica degli indici degli elementi (combo, salvataggio, precaricamento).
+     */
+    private static List<ServizioAggiuntivo> serviziOrdinati() {
+        List<ServizioAggiuntivo> servizi = new RegistroServiziAggiuntivi().getServizi();
+        servizi.sort(Comparator.comparing(ServizioAggiuntivo::getId));
+        return servizi;
+    }
+
+    private static int indiceServizio(List<ServizioAggiuntivo> servizi, ServizioAggiuntivo servizio) {
+        for (int i = 0; i < servizi.size(); i++) {
+            if (servizi.get(i).getId().equals(servizio.getId())) {
+                return i;
+            }
+        }
+        return -1;
     }
 }
