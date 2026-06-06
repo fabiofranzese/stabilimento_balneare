@@ -54,6 +54,11 @@ public class RegistroUtenti {
     /*
      * Crea e salva un nuovo Gestore. Non è esposto alla registrazione utente:
      * è usato dal livello setup per predisporre gli account dei gestori.
+     *
+     * NOTE: nel domain model RegistroUtenti è «Cliente Creator»: la creazione
+     * dei Gestore è esclusa dal flusso applicativo. Questo metodo resta solo
+     * come helper di bootstrap, invocato dal package setup (DatiIniziali) e non
+     * dai casi d'uso; vive qui per riusare la cifratura della password (cifra()).
      */
     public Gestore registraGestore(String nome, String cognome, String email,
                                    String telefono, String passwordInChiaro) {

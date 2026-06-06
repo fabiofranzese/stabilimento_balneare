@@ -21,7 +21,7 @@ Four layers with one-way dependencies only:
 
 - **Boundary (B)** — `…boundary`: user interaction via **Swing** (`JFrame`/forms, IntelliJ GUI Designer `.form` files). One boundary per actor/use-case interaction. **No** business logic, **no** persistence. Calls Control only.
 - **Control (C)** — `…controller`: use-case controllers (GRASP **Controller**). Orchestrate one scenario, coordinate Entities, and drive persistence through `Registro…`/`GestorePersistenza`. **Façade** lives here (mirrors the reference's `ControllerRimessaggio`). Calls Entity + Database.
-- **Entity (E)** — `…entity`: the domain model from the domain/GRASP class diagrams (GRASP **Information Expert / Creator**). Holds business rules. **Composite** and **State** live here. Pure domain — depends on nothing outward.
+- **Entity (E)** — `…entity`: the domain model from the domain/GRASP class diagrams (GRASP **Information Expert / Creator**). Holds business rules. **State** lives here. Pure domain — depends on nothing outward.
 - **Database (D)** — `…database`: a single **generic `GestorePersistenza`** (CRUD + finders over any entity) + **`JpaUtil`** (Singleton). Wraps `EntityManager` and owns transactions internally. Depends on Entity only; returns Entities, never leaks `EntityManager` upward.
 
 > **`Registro…` domain-service classes** (analogues of the reference's `RegistroRimessaggio`/`RegistroPosti`) wrap `GestorePersistenza` with domain logic and are what Controllers call to persist/look up aggregates — there is **no per-aggregate DAO**. Following the reference (and the «Information Expert» stereotype on the GRASP diagrams), a `Registro` lives in the **`entity`** package; this means it has an `entity → database` dependency — an accepted bend of strict BCED that the reference itself uses.
@@ -40,7 +40,7 @@ src/main/java/
 └── setup/                    # DB init/seeding + Main (entry point: setup.Main)
 src/main/resources/META-INF/persistence.xml
 ```
-Sub-packages and new layers are added per use case when needed, e.g. `entity/stabilimento` (Composite), `entity/stato` (State), `entity/notifica` (Observer + `ServizioNotifica` interface), and an `infrastructure/notifica` for the Adapter — **none of these exist yet**; create them when their use case is implemented.
+Sub-packages and new layers are added per use case when needed, e.g. `entity/stabilimento` (layout: `FilaOmbrelloni ◆— Ombrellone`, position via `TipoFila`), `entity/stato` (State for `Prenotazione`), `entity/notifica` (Observer + `ServizioNotifica` interface), and an `infrastructure/notifica` for the Adapter — **none of these exist yet**; create them when their use case is implemented.
 
 `Registro…` domain-service classes live in **`entity/`** (reference idiom + «Information Expert») — see the BCED note above.
 
@@ -53,18 +53,19 @@ Use these patterns **only** at the locations below. Don't scatter extra patterns
 | **Singleton** | Creational | Database | `JpaUtil` — single `EntityManagerFactory` from a named persistence unit, `getEntityManager()` per call, `chiudi()` to close; mirror the reference's `JpaUtil` exactly (note the casing) |
 | **Façade** | Structural | Control | Use-case controllers (`controller/`) expose coarse-grained operations to Boundary, orchestrating `Registro…` services + Entities (mirrors `ControllerRimessaggio`) |
 | **Adapter** | Structural | Infrastructure | `ServizioNotifica` target interface (owned by Entity); concrete `…Adapter` wraps the external notification channel (email/SMS/console). **No precedent in the reference — design it ourselves** |
-| **Composite** | Structural | Entity | Establishment layout tree: `ComponenteStabilimento` (component) ← `Settore`/`Zona` (composite) + `Postazione` (leaf). Built by *Configurazione stabilimento*, traversed by *Visualizzazione Mappa* |
-| **Observer** | Behavioral | Entity ↔ Infra | Reservation lifecycle (or `Postazione` availability) is the **Subject**; `ServizioNotifica` (via its Adapter) is an **Observer**. Notifies on *Effettua Prenotazione* / *Gestione prenotazioni personali*. **No precedent in the reference — design it ourselves** |
-| **State** | Behavioral | Entity | A lifecycle entity: e.g. `Postazione` (Libera → Prenotata → Occupata) or `Prenotazione` (Bozza → Confermata → Annullata). Drives map rendering + reservation transitions |
+| **Observer** | Behavioral | Entity ↔ Infra | Reservation (`Prenotazione`) lifecycle is the **Subject**; `ServizioNotifica` (via its Adapter) is an **Observer**. Notifies on *Effettua Prenotazione* / *Gestione prenotazioni personali*. **No precedent in the reference — design it ourselves** |
+| **State** | Behavioral | Entity | `Prenotazione` lifecycle: `StatoPrenotazione` ← `Prenotata` / `Annullata`. Drives reservation transitions and the storico. |
 
-**Verify the State host** — `Postazione` availability vs `Prenotazione` lifecycle — against the flows of events, and pick the one the flow actually describes. Don't implement both unless both flows require it.
+**State host is `Prenotazione`** (`StatoPrenotazione` → `Prenotata`/`Annullata`), per the authoritative domain model under `docs/diagrams/class/`. Ombrellone availability is **not** a State machine on the spot: it is a *derived* per-date query over active reservations.
+
+**No Composite pattern.** The authoritative domain model realises the establishment layout as plain composition `RegistroOmbrelloni ◇— FilaOmbrelloni ◆— Ombrellone` (position via the `TipoFila` hierarchy) — there is no `Stabilimento` root and no shared component supertype, so the GoF Composite is **not** used. Five required patterns remain: Singleton, Façade, Adapter, Observer, State.
 
 ## Use cases in scope
 
 Implement **in this order, one at a time**, stopping for review between each. Actors: *UtenteNonAutenticato*, *GestoreAutenticato*, *ClienteAutenticato*, *Servizio di Notifica*.
 
 1. **Registrazione / Accesso al sistema** — *UtenteNonAutenticato* registers, then authenticates into a `Cliente` or `Gestore`.
-2. **Configurazione stabilimento** — *GestoreAutenticato* builds the establishment layout → exercises **Composite**.
+2. **Configurazione stabilimento** — *GestoreAutenticato* builds the establishment layout: `RegistroOmbrelloni ◇— FilaOmbrelloni ◆— Ombrellone`, with position via the `TipoFila` hierarchy (no Composite).
 3. **Definizione Tariffe** — *GestoreAutenticato* defines `Tariffa` (per period / spot type).
 4. **Visualizzazione Mappa → Effettua Prenotazione** — *ClienteAutenticato* views the layout map; *Effettua Prenotazione* **«extend»s** *Visualizzazione Mappa* at extension point **"Prenotazione postazioni"**, then triggers **Observer** notification via *Servizio di Notifica*.
 
@@ -73,7 +74,8 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
 ## Project materials (all under `docs/`, read-only)
 
 - **`docs/diagrams/specifica progetto.md`** — the textual project specification (requirements statement) in Markdown → **read first**; it is the top of the analysis pipeline and the prose source the use cases and domain model derive from.
-- **`docs/diagrams/`** — use case, domain class, and GRASP class diagrams → **source of truth** for classes, attributes, relationships, multiplicities, and stereotypes («Creator», «Information Expert», «Controller»). Match names exactly.
+- **`docs/diagrams/class/`** — the **updated, authoritative** Domain Model + GRASP diagrams (`domain model.png`, `class diagram GRASP.png`) with an explanatory `Class Diagram — ….md` → **the current source of truth for the domain**. Supersedes the older diagrams where they differ: `FilaOmbrelloni`/`TipoFila` (not `Settore`/`Zona`/`Posizione`), **State on `Prenotazione`** (`Prenotata`/`Annullata`; spot availability is *derived*), single Façade `GestoreStabilimento`, and **no Composite**.
+- **`docs/diagrams/`** — use case, domain class, and GRASP class diagrams → **source of truth** for classes, attributes, relationships, multiplicities, and stereotypes («Creator», «Information Expert», «Controller»). Match names exactly. (Where these older diagrams disagree with `docs/diagrams/class/`, the latter wins.)
 - **`docs/diagrams/sequence/`** — the 2 sequence diagrams → **reference only** for call ordering and method names in those specific flows. Not exhaustive.
 - **`docs/flussi/`** — flow of events per use case → **reference only**; they drive scenario steps, alternative/exception flows, and validation rules.
 - **`docs/reference-project/`** — the professor's template project: a **Swing-based "Rimessaggio" (boat-storage)** app (different domain, same conventions) → **read-only reference** for: `JpaUtil`/Singleton style, the generic `GestorePersistenza` + `Registro…` model, `persistence.xml`, Swing/forms layout, BCED idioms. **Mirror its conventions, not its domain content. Do NOT modify it, build it, or copy it wholesale.** It is not part of this project's Maven build.
@@ -132,7 +134,7 @@ plugin is added.
 ## Guardrails
 
 - Respect the BCED dependency direction — **no upward imports, ever.**
-- Don't add patterns beyond the six listed, and don't skip a required one.
+- Don't add patterns beyond the five listed (Singleton, Façade, Adapter, Observer, State), and don't skip a required one.
 - Don't invent requirements absent from the spec/flows — flag the gap and ask.
 - Treat everything under `docs/` (diagrams, flussi, reference-project) as **read-only**.
 - For new **domain** classes not on the domain/GRASP diagrams: **ask first.** New *infrastructure* plumbing (`Registro` services, adapters, Swing forms) is fine.
