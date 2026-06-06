@@ -1,0 +1,218 @@
+package boundary;
+
+import controller.GestoreStabilimento;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
+
+/*
+ * FormVisualizzazioneMappa è il Boundary (BCED) del caso d'uso Visualizzazione
+ * Mappa: il Cliente sceglie una data e vede la mappa degli ombrelloni, con le
+ * postazioni evidenziate come disponibili (verde) o occupate (rosso) per quella
+ * data.
+ *
+ * La struttura del form (selettore data, pulsante, area mappa, pannello di
+ * dettaglio) è descritta nel file .form (IntelliJ GUI Designer); la mappa vera e
+ * propria è invece costruita a runtime nel pannelloMappa, perché dipende dai dati
+ * (numero di file e ombrelloni). Cliccando un ombrellone se ne vedono i dettagli
+ * (numero, fila, prezzo, disponibilità) e si abilita "Prenota" se è disponibile.
+ *
+ * Scambia con il Controller solo tipi primitivi/array e LocalDate (tipo del JDK):
+ * non conosce le Entity, nel rispetto della separazione BCED.
+ */
+public class FormVisualizzazioneMappa {
+
+    private JPanel pannelloVisualizzazioneMappa;
+    private JSpinner selettoreData;
+    private JButton bottoneMostra;
+    private JPanel pannelloMappa;
+    private JLabel etichettaNumero;
+    private JLabel etichettaFila;
+    private JLabel etichettaPrezzo;
+    private JLabel etichettaDisponibilita;
+    private JButton bottonePrenota;
+
+    // Colori delle celle della mappa.
+    private static final Color COLORE_LIBERO = new Color(0x81C784);
+    private static final Color COLORE_OCCUPATO = new Color(0xE57373);
+
+    // Finestra da cui si è aperta la mappa (l'area Cliente), nascosta mentre
+    // questo form è aperto: viene rimostrata alla chiusura.
+    private final JFrame finestraChiamante;
+    private JFrame frame;
+
+    // Data per cui è mostrata la mappa e ombrellone attualmente selezionato.
+    private LocalDate dataCorrente;
+    private long idOmbrelloneSelezionato = -1;
+
+    public FormVisualizzazioneMappa(JFrame finestraChiamante) {
+        this.finestraChiamante = finestraChiamante;
+
+        // Trasforma lo spinner in un selettore di data (gg/mm/aaaa).
+        selettoreData.setModel(new SpinnerDateModel());
+        selettoreData.setEditor(new JSpinner.DateEditor(selettoreData, "dd/MM/yyyy"));
+
+        // La mappa viene impilata per file.
+        pannelloMappa.setLayout(new BoxLayout(pannelloMappa, BoxLayout.Y_AXIS));
+
+        bottoneMostra.addActionListener(e -> mostraMappa());
+        bottonePrenota.addActionListener(e -> prenota());
+
+        resetDettaglio();
+    }
+
+    public JFrame apri() {
+        frame = new JFrame("Mappa dello stabilimento");
+        frame.setContentPane(pannelloVisualizzazioneMappa);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Chiudendo il form si torna all'area Cliente.
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                finestraChiamante.setVisible(true);
+            }
+        });
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+        return frame;
+    }
+
+    /*
+     * Costruisce la mappa per la data selezionata.
+     */
+    private void mostraMappa() {
+        dataCorrente = leggiData();
+        resetDettaglio();
+
+        pannelloMappa.removeAll();
+
+        String[] etichetteFile = GestoreStabilimento.etichetteFile();
+        int[][] numeri = GestoreStabilimento.numeriOmbrelloniPerFila();
+        long[][] identificativi = GestoreStabilimento.idOmbrelloniPerFila();
+        boolean[][] disponibili = GestoreStabilimento.disponibilitaPerFila(dataCorrente);
+
+        if (etichetteFile.length == 0) {
+            pannelloMappa.add(new JLabel("Nessuna postazione configurata."));
+        } else {
+            // Il mare è sul lato delle prime file: l'indicatore va in cima alla mappa.
+            pannelloMappa.add(creaIndicatoreMare());
+            for (int i = 0; i < etichetteFile.length; i++) {
+                pannelloMappa.add(creaRigaFila(i, etichetteFile[i], numeri[i], identificativi[i], disponibili[i]));
+            }
+        }
+
+        pannelloMappa.revalidate();
+        pannelloMappa.repaint();
+    }
+
+    /*
+     * Striscia che rappresenta il mare, mostrata in cima alla mappa (lato delle
+     * prime file).
+     */
+    private JComponent creaIndicatoreMare() {
+        JLabel mare = new JLabel("～ ～ ～ ～ ～   Mare   ～ ～ ～ ～ ～", SwingConstants.CENTER);
+        mare.setOpaque(true);
+        mare.setForeground(new Color(0x01579B));
+        mare.setBackground(new Color(0xB3E5FC));
+        mare.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        mare.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mare.setMaximumSize(new Dimension(Integer.MAX_VALUE, mare.getPreferredSize().height));
+        return mare;
+    }
+
+    /*
+     * Crea la riga grafica di una fila: l'etichetta della fila e una cella
+     * cliccabile per ogni ombrellone.
+     */
+    private JPanel creaRigaFila(int indiceFila, String etichettaFila,
+                                int[] numeri, long[] identificativi, boolean[] disponibili) {
+        JPanel riga = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        riga.setAlignmentX(Component.LEFT_ALIGNMENT);
+        riga.add(new JLabel(etichettaFila + ":"));
+
+        for (int j = 0; j < numeri.length; j++) {
+            final int numero = numeri[j];
+            final long id = identificativi[j];
+            final boolean disponibile = disponibili[j];
+
+            JButton cella = new JButton(String.valueOf(numero));
+            cella.setPreferredSize(new Dimension(48, 36));
+            cella.setOpaque(true);
+            cella.setBackground(disponibile ? COLORE_LIBERO : COLORE_OCCUPATO);
+            cella.addActionListener(e -> selezionaOmbrellone(indiceFila, id, numero, etichettaFila, disponibile));
+
+            riga.add(cella);
+        }
+
+        return riga;
+    }
+
+    /*
+     * Mostra i dettagli dell'ombrellone selezionato e abilita "Prenota" se è
+     * disponibile per la data scelta.
+     */
+    private void selezionaOmbrellone(int indiceFila, long id, int numero,
+                                     String etichettaFilaTesto, boolean disponibile) {
+        idOmbrelloneSelezionato = id;
+
+        etichettaNumero.setText("Ombrellone n. " + numero);
+        etichettaFila.setText(etichettaFilaTesto);
+
+        if (!disponibile) {
+            // Occupato per la data scelta: non si mostra il prezzo.
+            etichettaDisponibilita.setText("Stato: Non disponibile");
+            etichettaPrezzo.setText("Non disponibile");
+            bottonePrenota.setEnabled(false);
+            return;
+        }
+
+        double prezzo = GestoreStabilimento.prezzoFila(indiceFila, dataCorrente);
+
+        if (prezzo < 0) {
+            // Disponibile ma senza tariffa per la stagione: non si può prenotare.
+            etichettaDisponibilita.setText("Stato: Disponibile");
+            etichettaPrezzo.setText("Tariffa non disponibile");
+            bottonePrenota.setEnabled(false);
+            return;
+        }
+
+        etichettaDisponibilita.setText("Stato: Disponibile");
+        etichettaPrezzo.setText("Prezzo (" + GestoreStabilimento.nomeStagione(dataCorrente)
+                + "): " + String.format("€ %.2f", prezzo));
+        bottonePrenota.setEnabled(true);
+    }
+
+    /*
+     * Avvia (in seguito) il caso d'uso Effettua Prenotazione per l'ombrellone
+     * selezionato e la data corrente. Per ora è un segnaposto.
+     */
+    private void prenota() {
+        // NOTE: nel caso d'uso Effettua Prenotazione qui si aprirà il relativo
+        // form, passando idOmbrelloneSelezionato e dataCorrente.
+        JOptionPane.showMessageDialog(frame,
+                "La prenotazione sarà disponibile col prossimo caso d'uso.",
+                "Prenota", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // --- Utilità ---
+
+    private void resetDettaglio() {
+        idOmbrelloneSelezionato = -1;
+        etichettaNumero.setText("Ombrellone n. -");
+        etichettaFila.setText("Fila -");
+        etichettaPrezzo.setText("Prezzo -");
+        etichettaDisponibilita.setText("Stato: -");
+        bottonePrenota.setEnabled(false);
+    }
+
+    private LocalDate leggiData() {
+        Date data = (Date) selettoreData.getValue();
+        return data.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+}

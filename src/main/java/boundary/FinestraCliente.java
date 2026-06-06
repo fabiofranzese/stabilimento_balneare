@@ -7,9 +7,9 @@ import java.awt.event.WindowEvent;
 /*
  * FinestraCliente è la schermata dell'area riservata al Cliente autenticato.
  *
- * Per ora è un segnaposto con il solo pulsante di logout: i casi d'uso del
- * Cliente (visualizzazione mappa, effettua prenotazione, gestione prenotazioni
- * personali, ...) verranno aggiunti qui in seguito.
+ * Espone i casi d'uso del Cliente: per ora la Visualizzazione Mappa; gli altri
+ * (effettua prenotazione, gestione prenotazioni personali, ...) verranno aggiunti
+ * qui in seguito.
  *
  * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FinestraCliente.form):
  * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
@@ -17,11 +17,19 @@ import java.awt.event.WindowEvent;
 public class FinestraCliente {
 
     private JPanel pannelloCliente;
+    private JButton bottoneVisualizzaMappa;
     private JButton bottoneLogout;
 
     private JFrame frame;
 
     public FinestraCliente() {
+        // Apre il caso d'uso Visualizzazione Mappa, nascondendo quest'area:
+        // verrà rimostrata alla chiusura della mappa.
+        bottoneVisualizzaMappa.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormVisualizzazioneMappa(frame).apri();
+        });
+
         // Il logout chiude quest'area e riporta alla schermata principale.
         bottoneLogout.addActionListener(e -> tornaAllaSchermataPrincipale());
     }

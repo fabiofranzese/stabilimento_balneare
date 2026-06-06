@@ -25,6 +25,10 @@
         <class>entity.Tariffa</class>
         <class>entity.TariffaTipoFila</class>
         <class>entity.TariffaServizioAggiuntivo</class>
+        <class>entity.StatoPrenotazione</class>
+        <class>entity.Prenotata</class>
+        <class>entity.Annullata</class>
+        <class>entity.Prenotazione</class>
 
         <properties>
 

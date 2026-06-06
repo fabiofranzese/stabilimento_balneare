@@ -1,5 +1,7 @@
 package entity;
 
+import java.time.LocalDate;
+
 /*
  * Stagione rappresenta il periodo di applicazione di una tariffa (livello
  * Entity, BCED): alta o bassa stagione.
@@ -8,11 +10,6 @@ package entity;
  * essendo un insieme chiuso di valori senza comportamento, qui è realizzata come
  * enum, coerentemente con TipoFila. L'etichetta in italiano è l'unica sorgente
  * dei testi mostrati nella GUI (vedi GestoreStabilimento.stagioni()).
- *
- * NOTE: la corrispondenza fra una data del calendario e la sua stagione (il
- * "periodo" come intervallo di date) non serve per definire le tariffe: verrà
- * affrontata nel caso d'uso di prenotazione, quando si calcolerà il prezzo per
- * una data specifica.
  */
 public enum Stagione {
 
@@ -27,5 +24,14 @@ public enum Stagione {
 
     public String getEtichetta() {
         return etichetta;
+    }
+
+    /*
+     * Stagione in cui cade una data. Regola semplice (facilmente modificabile in
+     * un unico punto): da giugno a settembre è alta stagione, altrimenti bassa.
+     */
+    public static Stagione perData(LocalDate data) {
+        int mese = data.getMonthValue();
+        return (mese >= 6 && mese <= 9) ? ALTA : BASSA;
     }
 }

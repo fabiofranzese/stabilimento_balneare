@@ -1,7 +1,9 @@
 package controller;
 
 import entity.FilaOmbrelloni;
+import entity.Ombrellone;
 import entity.RegistroOmbrelloni;
+import entity.RegistroPrenotazioni;
 import entity.RegistroServiziAggiuntivi;
 import entity.RegistroTariffe;
 import entity.ServizioAggiuntivo;
@@ -10,6 +12,7 @@ import entity.TariffaServizioAggiuntivo;
 import entity.TariffaTipoFila;
 import entity.TipoFila;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -423,5 +426,133 @@ public class GestoreStabilimento {
             }
         }
         return -1;
+    }
+
+    // ===== Visualizzazione mappa =====
+    //
+    // Realizzazione, sicura rispetto a BCED, di visualizzaDisponibilita(data): il
+    // Boundary riceve solo array di primitivi/etichette, allineati per indice di
+    // fila e poi per indice di ombrellone. Le file sono ordinate per posizione
+    // (prima → intermedia → ultima, poi per numero): così la mappa va dalla riva
+    // verso l'interno e il lato mare è quello delle prime file. Nessuna Entity
+    // verso la GUI.
+
+    /*
+     * Etichette delle file: "Fila N". La posizione (prima/intermedia/ultima) non
+     * è mostrata: è suggerita dall'ordine delle file rispetto al mare.
+     */
+    public static String[] etichetteFile() {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        String[] etichette = new String[file.size()];
+
+        for (int i = 0; i < file.size(); i++) {
+            etichette[i] = "Fila " + file.get(i).getNumero();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Numeri degli ombrelloni, per fila (array 2D irregolare).
+     */
+    public static int[][] numeriOmbrelloniPerFila() {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        int[][] numeri = new int[file.size()][];
+
+        for (int i = 0; i < file.size(); i++) {
+            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
+            numeri[i] = new int[ombrelloni.size()];
+            for (int j = 0; j < ombrelloni.size(); j++) {
+                numeri[i][j] = ombrelloni.get(j).getNumero();
+            }
+        }
+
+        return numeri;
+    }
+
+    /*
+     * Id degli ombrelloni, per fila: identificano l'ombrellone selezionato (usati
+     * per avviare la prenotazione nel caso d'uso successivo).
+     */
+    public static long[][] idOmbrelloniPerFila() {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        long[][] identificativi = new long[file.size()][];
+
+        for (int i = 0; i < file.size(); i++) {
+            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
+            identificativi[i] = new long[ombrelloni.size()];
+            for (int j = 0; j < ombrelloni.size(); j++) {
+                identificativi[i][j] = ombrelloni.get(j).getId();
+            }
+        }
+
+        return identificativi;
+    }
+
+    /*
+     * Disponibilità degli ombrelloni in una data, per fila: true = libero,
+     * false = occupato (dato derivato dalle prenotazioni attive).
+     */
+    public static boolean[][] disponibilitaPerFila(LocalDate data) {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
+        boolean[][] disponibili = new boolean[file.size()][];
+
+        for (int i = 0; i < file.size(); i++) {
+            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
+            disponibili[i] = new boolean[ombrelloni.size()];
+            for (int j = 0; j < ombrelloni.size(); j++) {
+                disponibili[i][j] = !registroPrenotazioni.isOmbrelloneOccupato(ombrelloni.get(j), data);
+            }
+        }
+
+        return disponibili;
+    }
+
+    /*
+     * Prezzo del tipo di fila indicato per la stagione in cui cade la data scelta
+     * (condiviso da tutti gli ombrelloni della fila). Vale -1 se per quella
+     * stagione la tariffa non è definita.
+     */
+    public static double prezzoFila(int indiceFila, LocalDate data) {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        if (indiceFila < 0 || indiceFila >= file.size()) {
+            return -1;
+        }
+
+        TipoFila tipo = file.get(indiceFila).getTipoFila();
+        Stagione stagione = Stagione.perData(data);
+
+        for (TariffaTipoFila tariffa : new RegistroTariffe().getTariffeTipoFila()) {
+            if (tariffa.getTipoFila() == tipo && tariffa.getStagione() == stagione) {
+                return tariffa.getCosto();
+            }
+        }
+
+        return -1;
+    }
+
+    /*
+     * Nome della stagione in cui cade la data scelta (per la GUI).
+     */
+    public static String nomeStagione(LocalDate data) {
+        return Stagione.perData(data).getEtichetta();
+    }
+
+    /*
+     * File ordinate per la mappa: per posizione (prima → intermedia → ultima),
+     * poi per numero. L'ordine riflette la distanza dal mare.
+     */
+    private static List<FilaOmbrelloni> fileOrdinatePerMappa() {
+        List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
+        file.sort(Comparator.comparingInt((FilaOmbrelloni f) -> f.getTipoFila().ordinal())
+                .thenComparingInt(FilaOmbrelloni::getNumero));
+        return file;
+    }
+
+    private static List<Ombrellone> ombrelloniOrdinati(FilaOmbrelloni fila) {
+        List<Ombrellone> ombrelloni = new ArrayList<>(fila.getOmbrelloni());
+        ombrelloni.sort(Comparator.comparingInt(Ombrellone::getNumero));
+        return ombrelloni;
     }
 }
