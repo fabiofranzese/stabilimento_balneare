@@ -87,9 +87,9 @@ public class FormRegistrazione {
                         JOptionPane.QUESTION_MESSAGE);
                 if (scelta == JOptionPane.YES_OPTION) {
                     // Si passa all'accesso mantenendo la stessa finestra chiamante
-                    // (la principale, che resta nascosta).
+                    // (la principale, che resta nascosta) e precompilando l'email.
                     frame.dispose();
-                    new FormAccesso(finestraChiamante).apri();
+                    new FormAccesso(finestraChiamante, email).apri();
                 }
                 break;
 

@@ -26,10 +26,18 @@ public class FormAccesso {
     // Finestra da cui si è aperto l'accesso (la schermata principale), nascosta
     // mentre questo form è aperto: viene rimostrata se il form viene chiuso.
     private final JFrame finestraChiamante;
+    // Email da precompilare nel campo (es. quando si arriva dalla registrazione
+    // con un'email già registrata); null se non c'è nulla da precompilare.
+    private final String emailPrecompilata;
     private JFrame frame;
 
     public FormAccesso(JFrame finestraChiamante) {
+        this(finestraChiamante, null);
+    }
+
+    public FormAccesso(JFrame finestraChiamante, String emailPrecompilata) {
         this.finestraChiamante = finestraChiamante;
+        this.emailPrecompilata = emailPrecompilata;
         bottoneAccedi.addActionListener(e -> eseguiAccesso());
     }
 
@@ -37,6 +45,10 @@ public class FormAccesso {
         frame = new JFrame("Accesso");
         frame.setContentPane(pannelloAccesso);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Precompila l'email se fornita dal chiamante.
+        if (emailPrecompilata != null) {
+            campoEmail.setText(emailPrecompilata);
+        }
         // Se l'utente chiude il form senza accedere, si torna alla schermata
         // principale (la finestra chiamante).
         frame.addWindowListener(new WindowAdapter() {
