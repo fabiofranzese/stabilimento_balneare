@@ -3,6 +3,8 @@ package boundary;
 import controller.GestoreUtenti;
 
 import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /*
  * FormAccesso è il Boundary (BCED) del caso d'uso Accesso al sistema.
@@ -21,9 +23,13 @@ public class FormAccesso {
     private JPasswordField campoPassword;
     private JButton bottoneAccedi;
 
+    // Finestra da cui si è aperto l'accesso (la schermata principale), nascosta
+    // mentre questo form è aperto: viene rimostrata se il form viene chiuso.
+    private final JFrame finestraChiamante;
     private JFrame frame;
 
-    public FormAccesso() {
+    public FormAccesso(JFrame finestraChiamante) {
+        this.finestraChiamante = finestraChiamante;
         bottoneAccedi.addActionListener(e -> eseguiAccesso());
     }
 
@@ -31,6 +37,14 @@ public class FormAccesso {
         frame = new JFrame("Accesso");
         frame.setContentPane(pannelloAccesso);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Se l'utente chiude il form senza accedere, si torna alla schermata
+        // principale (la finestra chiamante).
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                finestraChiamante.setVisible(true);
+            }
+        });
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
@@ -46,11 +60,14 @@ public class FormAccesso {
 
         switch (esito) {
             case GestoreUtenti.LOGIN_CLIENTE:
+                // Accesso riuscito: la schermata principale non serve più.
+                finestraChiamante.dispose();
                 frame.dispose();
                 new FinestraCliente().apri();
                 break;
 
             case GestoreUtenti.LOGIN_GESTORE:
+                finestraChiamante.dispose();
                 frame.dispose();
                 new FinestraGestore().apri();
                 break;

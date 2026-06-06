@@ -15,13 +15,24 @@ public class FinestraPrincipale {
     private JButton bottoneAccedi;
     private JButton bottoneRegistrati;
 
+    private JFrame frame;
+
     public FinestraPrincipale() {
-        bottoneAccedi.addActionListener(e -> new FormAccesso().apri());
-        bottoneRegistrati.addActionListener(e -> new FormRegistrazione().apri());
+        // Aprendo una nuova finestra si nasconde quella corrente, così da non
+        // avere più finestre aperte contemporaneamente. La finestra chiamante
+        // (questa) viene passata al form, che la rimostrerà se viene chiuso.
+        bottoneAccedi.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormAccesso(frame).apri();
+        });
+        bottoneRegistrati.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormRegistrazione(frame).apri();
+        });
     }
 
     public JFrame apri() {
-        JFrame frame = new JFrame("Sistema di Gestione Stabilimenti Balneari");
+        frame = new JFrame("Sistema di Gestione Stabilimenti Balneari");
         frame.setContentPane(pannelloPrincipale);
         // La schermata principale chiude l'applicazione quando viene chiusa.
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

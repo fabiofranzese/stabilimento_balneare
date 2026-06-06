@@ -19,6 +19,9 @@
         <class>entity.Utente</class>
         <class>entity.Cliente</class>
         <class>entity.Gestore</class>
+        <class>entity.FilaOmbrelloni</class>
+        <class>entity.Ombrellone</class>
+        <class>entity.ServizioAggiuntivo</class>
 
         <properties>
 

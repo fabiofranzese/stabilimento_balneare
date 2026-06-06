@@ -3,6 +3,8 @@ package boundary;
 import controller.GestoreUtenti;
 
 import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /*
  * FormRegistrazione è il Boundary (BCED) del caso d'uso Registrazione.
@@ -25,9 +27,13 @@ public class FormRegistrazione {
     private JPasswordField campoPassword;
     private JButton bottoneRegistrati;
 
+    // Finestra da cui si è aperta la registrazione (la schermata principale),
+    // nascosta mentre questo form è aperto: viene rimostrata se il form si chiude.
+    private final JFrame finestraChiamante;
     private JFrame frame;
 
-    public FormRegistrazione() {
+    public FormRegistrazione(JFrame finestraChiamante) {
+        this.finestraChiamante = finestraChiamante;
         bottoneRegistrati.addActionListener(e -> eseguiRegistrazione());
     }
 
@@ -39,6 +45,14 @@ public class FormRegistrazione {
         frame = new JFrame("Registrazione");
         frame.setContentPane(pannelloRegistrazione);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Se l'utente chiude il form senza registrarsi, si torna alla schermata
+        // principale (la finestra chiamante).
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                finestraChiamante.setVisible(true);
+            }
+        });
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
@@ -59,6 +73,8 @@ public class FormRegistrazione {
             case GestoreUtenti.REGISTRAZIONE_OK:
                 // La registrazione effettua direttamente l'accesso: l'utente
                 // entra subito nell'area Cliente, senza dover accedere di nuovo.
+                // La schermata principale non serve più.
+                finestraChiamante.dispose();
                 frame.dispose();
                 new FinestraCliente().apri();
                 break;
@@ -70,8 +86,10 @@ public class FormRegistrazione {
                         "Email già registrata", JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE);
                 if (scelta == JOptionPane.YES_OPTION) {
+                    // Si passa all'accesso mantenendo la stessa finestra chiamante
+                    // (la principale, che resta nascosta).
                     frame.dispose();
-                    new FormAccesso().apri();
+                    new FormAccesso(finestraChiamante).apri();
                 }
                 break;
 
