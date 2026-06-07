@@ -17,6 +17,13 @@ public class Prenotata extends StatoPrenotazione {
     }
 
     @Override
+    public boolean isAnnullabile() {
+        // Una prenotazione attiva può essere annullata (nel rispetto del limite
+        // temporale, verificato da Prenotazione.isAnnullabile).
+        return true;
+    }
+
+    @Override
     public String nome() {
         return "Prenotata";
     }

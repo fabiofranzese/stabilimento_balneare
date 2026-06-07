@@ -166,12 +166,50 @@ public class RegistroPrenotazioni {
     }
 
     /*
+     * Information Expert: tutte le prenotazioni di un cliente (lo storico
+     * personale), a prescindere dallo stato (Prenotata e Annullata). Usata dal
+     * caso d'uso Gestione prenotazioni personali per consultazione e annullamento.
+     */
+    public List<Prenotazione> prenotazioniCliente(Cliente cliente) {
+        return gestorePersistenza.cercaPerCampo(Prenotazione.class, "cliente", cliente);
+    }
+
+    /*
+     * Annulla una prenotazione (caso d'uso Gestione prenotazioni personali,
+     * «include» Annullamento prenotazione): esegue la transizione di stato verso
+     * Annullata, rende persistente la modifica e notifica gli osservatori (passo
+     * 3.3 del flusso). La verifica del limite temporale è a carico del Controller
+     * (Prenotazione.isAnnullabile), come per gli altri controlli di flusso.
+     */
+    public Prenotazione annullaPrenotazione(Prenotazione prenotazione) {
+        // Transizione di State: Prenotata -> Annullata.
+        prenotazione.annulla(statoAnnullata());
+
+        Prenotazione aggiornata = gestorePersistenza.aggiorna(prenotazione);
+
+        // Observer: notifica il Servizio di Notifica dell'annullamento.
+        notificaAnnullamento(aggiornata);
+
+        return aggiornata;
+    }
+
+    /*
      * Notifica tutti gli osservatori registrati che una prenotazione è stata
      * effettuata.
      */
     private void notifica(Prenotazione prenotazione) {
         for (ServizioNotifica osservatore : osservatori) {
             osservatore.prenotazioneEffettuata(prenotazione);
+        }
+    }
+
+    /*
+     * Notifica tutti gli osservatori registrati che una prenotazione è stata
+     * annullata.
+     */
+    private void notificaAnnullamento(Prenotazione prenotazione) {
+        for (ServizioNotifica osservatore : osservatori) {
+            osservatore.prenotazioneAnnullata(prenotazione);
         }
     }
 
@@ -198,5 +236,13 @@ public class RegistroPrenotazioni {
      */
     private StatoPrenotazione statoPrenotata() {
         return gestorePersistenza.cercaPrimoPerCampi(Prenotata.class, Map.of());
+    }
+
+    /*
+     * Restituisce lo stato "Annullata" predisposto all'avvio (riga singleton),
+     * oppure null se non presente.
+     */
+    private StatoPrenotazione statoAnnullata() {
+        return gestorePersistenza.cercaPrimoPerCampi(Annullata.class, Map.of());
     }
 }

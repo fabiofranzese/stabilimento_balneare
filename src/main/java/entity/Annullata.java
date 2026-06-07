@@ -17,6 +17,12 @@ public class Annullata extends StatoPrenotazione {
     }
 
     @Override
+    public boolean isAnnullabile() {
+        // Una prenotazione già annullata non può essere annullata di nuovo.
+        return false;
+    }
+
+    @Override
     public String nome() {
         return "Annullata";
     }

@@ -5,6 +5,7 @@ import entity.Cliente;
 import entity.FilaOmbrelloni;
 import entity.Ombrellone;
 import entity.OmbrelloneNonDisponibileException;
+import entity.Prenotazione;
 import entity.RegistroOmbrelloni;
 import entity.RegistroPrenotazioni;
 import entity.RegistroServiziAggiuntivi;
@@ -13,11 +14,13 @@ import entity.RegistroUtenti;
 import entity.ServizioAggiuntivo;
 import entity.ServizioEsauritoException;
 import entity.Stagione;
+import entity.StatoPrenotazione;
 import entity.TariffaServizioAggiuntivo;
 import entity.TariffaTipoFila;
 import entity.TipoFila;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -43,6 +46,10 @@ import java.util.Map;
  */
 public class GestoreStabilimento {
 
+    // Formato di data per le righe dell'elenco prenotazioni (Gestione personali).
+    private static final DateTimeFormatter FORMATO_DATA_PRENOTAZIONE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     // Esiti della configurazione.
     public static final int CONFIGURAZIONE_OK = 0;
     public static final int DATI_NON_VALIDI = 1;
@@ -60,6 +67,12 @@ public class GestoreStabilimento {
     public static final int SERVIZIO_ESAURITO = 22;
     public static final int DATI_PRENOTAZIONE_NON_VALIDI = 23;
     public static final int ERRORE_PRENOTAZIONE = 24;
+
+    // Esiti dell'annullamento (caso d'uso Gestione prenotazioni personali).
+    public static final int ANNULLAMENTO_OK = 30;
+    public static final int LIMITE_TEMPORALE_SUPERATO = 31;
+    public static final int PRENOTAZIONE_NON_TROVATA = 32;
+    public static final int ERRORE_ANNULLAMENTO = 33;
 
     /*
      * Etichette in italiano della posizione di ogni fila, derivate dall'ordine:
@@ -788,5 +801,233 @@ public class GestoreStabilimento {
             }
         }
         return -1;
+    }
+
+    // ===== Gestione prenotazioni personali =====
+    //
+    // Operazioni del caso d'uso Gestione prenotazioni personali (attore
+    // ClienteAutenticato): consultazione dello storico delle proprie prenotazioni
+    // e annullamento entro il limite temporale. Il Boundary identifica il cliente
+    // con l'email e la prenotazione con il suo id: nessuna Entity attraversa il
+    // confine B/C. I metodi di lettura restituiscono array paralleli, allineati
+    // dallo stesso ordinamento (prenotazioniOrdinate): l'elenco mostra solo la
+    // data, mentre i campi di dettaglio (postazione, servizi, stato, prezzo) sono
+    // mostrati per la prenotazione selezionata.
+
+    /*
+     * Date delle prenotazioni del cliente (per l'elenco nel form: una voce per
+     * prenotazione). Allineata per indice a tutti gli altri array di lettura.
+     */
+    public static String[] datePrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        String[] date = new String[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            LocalDate data = prenotazioni.get(i).getData();
+            date[i] = (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "";
+        }
+
+        return date;
+    }
+
+    /*
+     * Postazione scelta di ciascuna prenotazione del cliente ("Ombrellone n. X
+     * (Fila Y)"), per il dettaglio. Allineata a datePrenotazioniCliente.
+     */
+    public static String[] postazioniPrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        String[] postazioni = new String[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            postazioni[i] = descriviPostazione(prenotazioni.get(i));
+        }
+
+        return postazioni;
+    }
+
+    /*
+     * Servizi aggiuntivi (con quantità) di ciascuna prenotazione del cliente,
+     * "nessuno" se non ce ne sono. Per il dettaglio; allineata a
+     * datePrenotazioniCliente.
+     */
+    public static String[] serviziPrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        String[] servizi = new String[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            String descrizione = descriviServizi(prenotazioni.get(i));
+            servizi[i] = descrizione.isEmpty() ? "nessuno" : descrizione;
+        }
+
+        return servizi;
+    }
+
+    /*
+     * Stato di ciascuna prenotazione del cliente ("Prenotata"/"Annullata"), per il
+     * dettaglio. Allineata a datePrenotazioniCliente.
+     */
+    public static String[] statiPrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        String[] stati = new String[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            StatoPrenotazione stato = prenotazioni.get(i).getStato();
+            stati[i] = (stato != null) ? stato.nome() : "";
+        }
+
+        return stati;
+    }
+
+    /*
+     * Prezzo totale "congelato" di ciascuna prenotazione del cliente, per il
+     * dettaglio. Allineato a datePrenotazioniCliente.
+     */
+    public static double[] prezziPrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        double[] prezzi = new double[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            prezzi[i] = prenotazioni.get(i).getPrezzoTotale();
+        }
+
+        return prezzi;
+    }
+
+    /*
+     * Id delle prenotazioni del cliente, allineati a datePrenotazioniCliente:
+     * identificano la prenotazione selezionata per l'annullamento.
+     */
+    public static long[] idPrenotazioniCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        long[] identificativi = new long[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            identificativi[i] = prenotazioni.get(i).getId();
+        }
+
+        return identificativi;
+    }
+
+    /*
+     * Per ogni prenotazione del cliente, indica se è annullabile alla data odierna
+     * (stato Prenotata e richiesta entro il limite temporale: oggi < data).
+     * Allineata a datePrenotazioniCliente: il Boundary la usa per
+     * abilitare/disabilitare l'annullamento sulla prenotazione selezionata.
+     */
+    public static boolean[] annullabiliCliente(String emailCliente) {
+        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
+        LocalDate oggi = LocalDate.now();
+        boolean[] annullabili = new boolean[prenotazioni.size()];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            annullabili[i] = prenotazioni.get(i).isAnnullabile(oggi);
+        }
+
+        return annullabili;
+    }
+
+    /*
+     * Caso d'uso Gestione prenotazioni personali — Annullamento prenotazione.
+     *
+     * Risolve cliente (per email) e prenotazione (per id), verifica che la
+     * prenotazione appartenga a quel cliente (gestione dei permessi) e che sia
+     * annullabile entro il limite temporale, poi delega al RegistroPrenotazioni la
+     * transizione a Annullata, il salvataggio e la notifica. Restituisce un codice
+     * di esito per il Boundary.
+     */
+    public static int annullaPrenotazione(String emailCliente, long idPrenotazione) {
+        if (emailCliente == null) {
+            return PRENOTAZIONE_NON_TROVATA;
+        }
+
+        Cliente cliente = clientePerEmail(emailCliente);
+        if (cliente == null) {
+            return PRENOTAZIONE_NON_TROVATA;
+        }
+
+        Prenotazione prenotazione =
+                new GestorePersistenza().trovaPerId(Prenotazione.class, idPrenotazione);
+
+        // La prenotazione deve esistere ed essere del cliente richiedente.
+        if (prenotazione == null || !appartieneA(prenotazione, cliente)) {
+            return PRENOTAZIONE_NON_TROVATA;
+        }
+
+        // Estensione 3.2.a: oltre il limite temporale (o già annullata).
+        if (!prenotazione.isAnnullabile(LocalDate.now())) {
+            return LIMITE_TEMPORALE_SUPERATO;
+        }
+
+        try {
+            new RegistroPrenotazioni().annullaPrenotazione(prenotazione);
+            return ANNULLAMENTO_OK;
+
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ERRORE_ANNULLAMENTO;
+        }
+    }
+
+    /*
+     * Prenotazioni del cliente in ordine deterministico (per data, poi per id):
+     * l'ordine stabile su cui si allineano gli array di lettura. Restituisce una
+     * lista vuota se l'email non corrisponde a un cliente.
+     */
+    private static List<Prenotazione> prenotazioniOrdinate(String emailCliente) {
+        Cliente cliente = clientePerEmail(emailCliente);
+        if (cliente == null) {
+            return new ArrayList<>();
+        }
+
+        List<Prenotazione> prenotazioni = new RegistroPrenotazioni().prenotazioniCliente(cliente);
+        prenotazioni.sort(Comparator.comparing(Prenotazione::getData)
+                .thenComparing(Prenotazione::getId));
+        return prenotazioni;
+    }
+
+    /*
+     * Postazione scelta di una prenotazione ("Ombrellone n. X (Fila Y)"), oppure
+     * stringa vuota se non determinabile.
+     */
+    private static String descriviPostazione(Prenotazione prenotazione) {
+        Ombrellone ombrellone = prenotazione.getOmbrellone();
+        if (ombrellone == null) {
+            return "";
+        }
+
+        StringBuilder postazione = new StringBuilder();
+        postazione.append("Ombrellone n. ").append(ombrellone.getNumero());
+        if (ombrellone.getFila() != null) {
+            postazione.append(" (Fila ").append(ombrellone.getFila().getNumero()).append(')');
+        }
+
+        return postazione.toString();
+    }
+
+    /*
+     * Elenco dei servizi aggiuntivi di una prenotazione, con quantità
+     * ("2 x Lettino, 1 x Cabina"); stringa vuota se non ci sono servizi.
+     */
+    private static String descriviServizi(Prenotazione prenotazione) {
+        StringBuilder servizi = new StringBuilder();
+
+        for (Map.Entry<ServizioAggiuntivo, Integer> voce : prenotazione.getQuantitaServizi().entrySet()) {
+            if (servizi.length() > 0) {
+                servizi.append(", ");
+            }
+            servizi.append(voce.getValue()).append(" x ").append(voce.getKey().getDescrizione());
+        }
+
+        return servizi.toString();
+    }
+
+    /*
+     * Verifica che la prenotazione appartenga al cliente indicato (confronto per
+     * id: gli oggetti provengono da caricamenti distinti).
+     */
+    private static boolean appartieneA(Prenotazione prenotazione, Cliente cliente) {
+        return prenotazione.getCliente() != null
+                && prenotazione.getCliente().getId() != null
+                && prenotazione.getCliente().getId().equals(cliente.getId());
     }
 }

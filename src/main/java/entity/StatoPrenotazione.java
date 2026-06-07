@@ -32,6 +32,13 @@ public abstract class StatoPrenotazione {
     public abstract boolean isAttiva();
 
     /*
+     * Comportamento che varia con lo stato (pattern State): indica se da questo
+     * stato è ammessa la transizione verso "annullata". Solo una prenotazione
+     * ancora attiva (Prenotata) può essere annullata; una già Annullata no.
+     */
+    public abstract boolean isAnnullabile();
+
+    /*
      * Nome leggibile dello stato (per la GUI).
      */
     public abstract String nome();

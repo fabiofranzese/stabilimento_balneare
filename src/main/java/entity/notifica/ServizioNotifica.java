@@ -24,4 +24,11 @@ public interface ServizioNotifica {
      * cui ricavare i dati da comunicare (cliente, ombrellone, data, servizi).
      */
     void prenotazioneEffettuata(Prenotazione prenotazione);
+
+    /*
+     * Notifica che una prenotazione è stata annullata (caso d'uso Gestione
+     * prenotazioni personali, passo 3.3), passando l'oggetto da cui ricavare i
+     * dati da comunicare (cliente, ombrellone, data).
+     */
+    void prenotazioneAnnullata(Prenotazione prenotazione);
 }

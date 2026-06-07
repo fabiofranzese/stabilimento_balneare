@@ -1,0 +1,257 @@
+package boundary;
+
+import controller.GestoreStabilimento;
+
+import javax.swing.*;
+import java.awt.Color;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
+/*
+ * FormGestionePrenotazioni è il Boundary (BCED) del caso d'uso Gestione
+ * prenotazioni personali.
+ *
+ * Realizza le due interazioni «include» del flusso: la Visualizzazione delle
+ * prenotazioni personali (l'elenco dello storico del cliente) e l'Annullamento
+ * di una prenotazione (entro il limite temporale).
+ *
+ * L'interfaccia è organizzata come una vista "elenco + dettaglio" (come la mappa
+ * degli ombrelloni): a sinistra una lista che riporta solo la data di ciascuna
+ * prenotazione; selezionandone una se ne vedono i dettagli (data, postazione,
+ * servizi, stato, prezzo) e, se ancora annullabile, la si può annullare.
+ *
+ * Interfaccia realizzata con l'IntelliJ GUI Designer
+ * (FormGestionePrenotazioni.form): i campi sotto sono bindati al form e
+ * istanziati da IntelliJ in compilazione (metodo generato $$$setupUI$$$), prima
+ * del corpo del costruttore.
+ *
+ * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
+ * GestoreStabilimento e scambia solo tipi semplici (email, id, array di
+ * primitivi). Non conosce le Entity, nel rispetto della separazione BCED.
+ */
+public class FormGestionePrenotazioni {
+
+    private JPanel pannelloGestionePrenotazioni;
+    private JList<String> listaPrenotazioni;
+    private JLabel etichettaData;
+    private JLabel etichettaPostazione;
+    private JLabel etichettaServizi;
+    private JLabel etichettaStato;
+    private JLabel etichettaPrezzo;
+    private JLabel etichettaAvviso;
+    private JButton bottoneAnnulla;
+    private JButton bottoneChiudi;
+
+    // Finestra da cui si è aperta la gestione (l'area Cliente), nascosta mentre
+    // questo form è aperto: viene rimostrata alla chiusura.
+    private final JFrame finestraChiamante;
+    private JFrame frame;
+
+    // Identità del cliente autenticato (propagata come email, non come Entity).
+    private final String emailCliente;
+
+    private final DefaultListModel<String> modelloPrenotazioni = new DefaultListModel<>();
+
+    // Dati delle prenotazioni mostrate, allineati per indice alle voci della
+    // lista (ordine deciso dal Controller): la lista mostra solo le date, gli
+    // altri array popolano il dettaglio della prenotazione selezionata.
+    private String[] date = new String[0];
+    private String[] postazioni = new String[0];
+    private String[] servizi = new String[0];
+    private String[] stati = new String[0];
+    private double[] prezzi = new double[0];
+    private long[] idPrenotazioni = new long[0];
+    private boolean[] annullabili = new boolean[0];
+
+    public FormGestionePrenotazioni(JFrame finestraChiamante, String emailCliente) {
+        this.finestraChiamante = finestraChiamante;
+        this.emailCliente = emailCliente;
+
+        listaPrenotazioni.setModel(modelloPrenotazioni);
+        listaPrenotazioni.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        // Alla selezione di una prenotazione se ne mostra il dettaglio.
+        listaPrenotazioni.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                mostraDettaglio();
+            }
+        });
+
+        // L'avviso "non più annullabile" è evidenziato in rosso.
+        etichettaAvviso.setForeground(new Color(0xC62828));
+
+        bottoneAnnulla.addActionListener(e -> annulla());
+        bottoneChiudi.addActionListener(e -> chiudi());
+
+        resetDettaglio();
+    }
+
+    public JFrame apri() {
+        frame = new JFrame("Gestione prenotazioni");
+        frame.setContentPane(pannelloGestionePrenotazioni);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Chiudendo la finestra si torna all'area Cliente.
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                finestraChiamante.setVisible(true);
+            }
+        });
+
+        caricaPrenotazioni();
+
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+        return frame;
+    }
+
+    /*
+     * Carica (o ricarica) l'elenco delle prenotazioni del cliente dal Controller.
+     * La lista mostra solo le date; gli array paralleli alimentano il dettaglio.
+     * Estensione 2.a: se il cliente non ha prenotazioni, lo segnala.
+     */
+    private void caricaPrenotazioni() {
+        date = GestoreStabilimento.datePrenotazioniCliente(emailCliente);
+        postazioni = GestoreStabilimento.postazioniPrenotazioniCliente(emailCliente);
+        servizi = GestoreStabilimento.serviziPrenotazioniCliente(emailCliente);
+        stati = GestoreStabilimento.statiPrenotazioniCliente(emailCliente);
+        prezzi = GestoreStabilimento.prezziPrenotazioniCliente(emailCliente);
+        idPrenotazioni = GestoreStabilimento.idPrenotazioniCliente(emailCliente);
+        annullabili = GestoreStabilimento.annullabiliCliente(emailCliente);
+
+        // Ogni voce della lista riporta la data e lo stato della prenotazione
+        // (es. "07/06/2026 - Prenotata").
+        modelloPrenotazioni.clear();
+        for (int i = 0; i < date.length; i++) {
+            modelloPrenotazioni.addElement(date[i] + " - " + stati[i]);
+        }
+
+        if (date.length == 0) {
+            // Estensione 2.a: nessuna prenotazione.
+            etichettaData.setText("Non hai prenotazioni.");
+        }
+
+        listaPrenotazioni.clearSelection();
+        resetDettaglio();
+    }
+
+    /*
+     * Mostra il dettaglio della prenotazione selezionata e abilita "Annulla" solo
+     * se la prenotazione è ancora annullabile (stato Prenotata ed entro il limite).
+     */
+    private void mostraDettaglio() {
+        int selezione = listaPrenotazioni.getSelectedIndex();
+
+        if (selezione < 0 || selezione >= idPrenotazioni.length) {
+            resetDettaglio();
+            return;
+        }
+
+        etichettaData.setText("Data: " + date[selezione]);
+        etichettaPostazione.setText("Postazione: "
+                + (postazioni[selezione].isEmpty() ? "-" : postazioni[selezione]));
+        etichettaServizi.setText("Servizi: " + servizi[selezione]);
+        etichettaStato.setText("Stato: " + stati[selezione]);
+        etichettaPrezzo.setText(String.format("Totale: € %.2f", prezzi[selezione]));
+
+        bottoneAnnulla.setEnabled(annullabili[selezione]);
+
+        // Se la prenotazione è ancora attiva (Prenotata) ma non più annullabile,
+        // è scaduto il limite temporale: lo si segnala sopra il pulsante Annulla.
+        // Per una prenotazione già Annullata lo stato è già esplicito.
+        if (!annullabili[selezione] && "Prenotata".equals(stati[selezione])) {
+            etichettaAvviso.setText("Non più annullabile: è oltre il limite temporale.");
+        } else {
+            etichettaAvviso.setText(" ");
+        }
+    }
+
+    /*
+     * Annulla la prenotazione selezionata: verifica preliminarmente
+     * l'annullabilità (per un messaggio immediato), poi invia la richiesta al
+     * Controller e gestisce l'esito.
+     */
+    private void annulla() {
+        int selezione = listaPrenotazioni.getSelectedIndex();
+
+        if (selezione < 0 || selezione >= idPrenotazioni.length) {
+            JOptionPane.showMessageDialog(frame,
+                    "Seleziona una prenotazione da annullare.",
+                    "Nessuna selezione", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Controllo anticipato: prenotazione non annullabile (già annullata o oltre
+        // il limite temporale). Il Controller ricontrolla comunque (difesa in
+        // profondità), ma così l'utente ha subito il messaggio.
+        if (!annullabili[selezione]) {
+            JOptionPane.showMessageDialog(frame,
+                    "Questa prenotazione non può essere annullata:\n"
+                            + "è già annullata oppure è oltre il limite temporale consentito\n"
+                            + "(l'annullamento è possibile solo prima della data prenotata).",
+                    "Annullamento non consentito", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int conferma = JOptionPane.showConfirmDialog(frame,
+                "Vuoi annullare la prenotazione selezionata?",
+                "Conferma annullamento", JOptionPane.YES_NO_OPTION);
+        if (conferma != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        int esito = GestoreStabilimento.annullaPrenotazione(emailCliente, idPrenotazioni[selezione]);
+
+        switch (esito) {
+            case GestoreStabilimento.ANNULLAMENTO_OK:
+                JOptionPane.showMessageDialog(frame,
+                        "Prenotazione annullata. Riceverai una notifica di conferma.",
+                        "Annullamento effettuato", JOptionPane.INFORMATION_MESSAGE);
+                caricaPrenotazioni();
+                break;
+
+            case GestoreStabilimento.LIMITE_TEMPORALE_SUPERATO:
+                // Estensione 3.2.a: oltre il limite temporale.
+                JOptionPane.showMessageDialog(frame,
+                        "Operazione negata: la prenotazione è oltre il limite temporale consentito\n"
+                                + "(l'annullamento è possibile solo prima della data prenotata).",
+                        "Annullamento non consentito", JOptionPane.WARNING_MESSAGE);
+                caricaPrenotazioni();
+                break;
+
+            case GestoreStabilimento.PRENOTAZIONE_NON_TROVATA:
+                JOptionPane.showMessageDialog(frame,
+                        "La prenotazione selezionata non è più disponibile.",
+                        "Prenotazione non trovata", JOptionPane.WARNING_MESSAGE);
+                caricaPrenotazioni();
+                break;
+
+            default:
+                JOptionPane.showMessageDialog(frame,
+                        "Si è verificato un errore durante l'annullamento. Riprova.",
+                        "Errore", JOptionPane.ERROR_MESSAGE);
+                break;
+        }
+    }
+
+    /*
+     * Azzera il pannello di dettaglio (nessuna prenotazione selezionata) e
+     * disabilita l'annullamento.
+     */
+    private void resetDettaglio() {
+        if (date.length > 0) {
+            etichettaData.setText("Seleziona una prenotazione");
+        }
+        etichettaPostazione.setText("Postazione: -");
+        etichettaServizi.setText("Servizi: -");
+        etichettaStato.setText("Stato: -");
+        etichettaPrezzo.setText("Totale: -");
+        etichettaAvviso.setText(" ");
+        bottoneAnnulla.setEnabled(false);
+    }
+
+    private void chiudi() {
+        finestraChiamante.setVisible(true);
+        frame.dispose();
+    }
+}

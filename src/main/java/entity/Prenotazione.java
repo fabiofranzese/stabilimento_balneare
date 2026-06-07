@@ -99,6 +99,32 @@ public class Prenotazione {
         this.prezzoTotale = prezzoTotale;
     }
 
+    /*
+     * Information Expert del limite di annullamento: indica se la prenotazione è
+     * annullabile alla data odierna indicata. Combina due condizioni:
+     * - lo stato lo consente (pattern State: solo una Prenotata è annullabile);
+     * - la richiesta avviene entro il limite temporale, cioè prima della data
+     *   prenotata (oggi < data). Il giorno stesso e i giorni successivi sono
+     *   oltre il limite.
+     */
+    public boolean isAnnullabile(LocalDate oggi) {
+        return stato != null && stato.isAnnullabile()
+                && oggi != null && data != null && oggi.isBefore(data);
+    }
+
+    /*
+     * Transizione di stato (pattern State): porta la prenotazione nello stato
+     * "annullata" indicato (la riga singleton predisposta all'avvio).
+     *
+     * NOTE: la precondizione (annullabilità) è verificata a monte dal Controller
+     * tramite isAnnullabile(oggi); qui si esegue la sola transizione. È una
+     * separazione di responsabilità coerente con il resto del progetto (la
+     * verifica resta nel dominio, l'orchestrazione nel Controller).
+     */
+    public void annulla(StatoPrenotazione statoAnnullata) {
+        this.stato = statoAnnullata;
+    }
+
     public Long getId() {
         return id;
     }

@@ -7,9 +7,8 @@ import java.awt.event.WindowEvent;
 /*
  * FinestraCliente è la schermata dell'area riservata al Cliente autenticato.
  *
- * Espone i casi d'uso del Cliente: per ora la Visualizzazione Mappa; gli altri
- * (effettua prenotazione, gestione prenotazioni personali, ...) verranno aggiunti
- * qui in seguito.
+ * Espone i casi d'uso del Cliente: la Visualizzazione Mappa (da cui si effettua
+ * una prenotazione) e la Gestione delle prenotazioni personali.
  *
  * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FinestraCliente.form):
  * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
@@ -18,6 +17,7 @@ public class FinestraCliente {
 
     private JPanel pannelloCliente;
     private JButton bottoneVisualizzaMappa;
+    private JButton bottoneGestionePrenotazioni;
     private JButton bottoneLogout;
 
     // Email del cliente autenticato (identità propagata dall'accesso): serve ai
@@ -34,6 +34,13 @@ public class FinestraCliente {
         bottoneVisualizzaMappa.addActionListener(e -> {
             frame.setVisible(false);
             new FormVisualizzazioneMappa(frame, emailCliente).apri();
+        });
+
+        // Apre il caso d'uso Gestione prenotazioni personali, nascondendo
+        // quest'area: verrà rimostrata alla chiusura del form.
+        bottoneGestionePrenotazioni.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormGestionePrenotazioni(frame, emailCliente).apri();
         });
 
         // Il logout chiude quest'area e riporta alla schermata principale.

@@ -41,6 +41,15 @@ public class AdattatoreServizioNotifica implements ServizioNotifica {
         canale.invia(destinatario, oggetto, corpo);
     }
 
+    @Override
+    public void prenotazioneAnnullata(Prenotazione prenotazione) {
+        String destinatario = destinatario(prenotazione.getCliente());
+        String oggetto = "Annullamento prenotazione";
+        String corpo = componiCorpoAnnullamento(prenotazione);
+
+        canale.invia(destinatario, oggetto, corpo);
+    }
+
     /*
      * Recapito del cliente: si usa l'email; in mancanza, il telefono.
      */
@@ -87,6 +96,31 @@ public class AdattatoreServizioNotifica implements ServizioNotifica {
 
         corpo.append("Totale: ").append(String.format("€ %.2f", prenotazione.getPrezzoTotale()))
                 .append('\n');
+
+        return corpo.toString();
+    }
+
+    /*
+     * Testo della notifica di annullamento con i dati della prenotazione annullata
+     * (cliente, ombrellone, data).
+     */
+    private String componiCorpoAnnullamento(Prenotazione prenotazione) {
+        StringBuilder corpo = new StringBuilder();
+
+        Cliente cliente = prenotazione.getCliente();
+        if (cliente != null) {
+            corpo.append("Gentile ").append(cliente.getNome()).append(' ')
+                    .append(cliente.getCognome()).append(",\n");
+        }
+
+        corpo.append("la sua prenotazione è stata annullata.\n");
+
+        if (prenotazione.getOmbrellone() != null) {
+            corpo.append("Ombrellone n. ").append(prenotazione.getOmbrellone().getNumero()).append('\n');
+        }
+        if (prenotazione.getData() != null) {
+            corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA)).append('\n');
+        }
 
         return corpo.toString();
     }
