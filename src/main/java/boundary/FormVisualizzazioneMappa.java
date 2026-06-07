@@ -8,6 +8,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Calendar;
 import java.util.Date;
 
 /*
@@ -41,6 +42,10 @@ public class FormVisualizzazioneMappa {
     private static final Color COLORE_LIBERO = new Color(0x81C784);
     private static final Color COLORE_OCCUPATO = new Color(0xE57373);
 
+    // Larghezza fissa dell'etichetta di fila: la tiene a sinistra e, bilanciata da
+    // uno spazio uguale a destra, lascia gli ombrelloni centrati nella riga.
+    private static final int LARGHEZZA_ETICHETTA_FILA = 70;
+
     // Finestra da cui si è aperta la mappa (l'area Cliente), nascosta mentre
     // questo form è aperto: viene rimostrata alla chiusura.
     private final JFrame finestraChiamante;
@@ -59,8 +64,10 @@ public class FormVisualizzazioneMappa {
         this.finestraChiamante = finestraChiamante;
         this.emailCliente = emailCliente;
 
-        // Trasforma lo spinner in un selettore di data (gg/mm/aaaa).
-        selettoreData.setModel(new SpinnerDateModel());
+        // Selettore di data (gg/mm/aaaa) che parte da oggi e non consente di
+        // selezionare date passate: consultare o prenotare nel passato non ha senso.
+        Date oggi = aMezzanotte(LocalDate.now());
+        selettoreData.setModel(new SpinnerDateModel(oggi, oggi, null, Calendar.DAY_OF_MONTH));
         selettoreData.setEditor(new JSpinner.DateEditor(selettoreData, "dd/MM/yyyy"));
 
         // La mappa viene impilata per file.
@@ -104,6 +111,17 @@ public class FormVisualizzazioneMappa {
      */
     private void mostraMappa() {
         dataCorrente = leggiData();
+
+        // Difesa: il limite del selettore vincola le frecce, ma l'utente potrebbe
+        // aver digitato a mano una data passata. In tal caso si riporta a oggi.
+        if (dataCorrente.isBefore(LocalDate.now())) {
+            dataCorrente = LocalDate.now();
+            selettoreData.setValue(aMezzanotte(dataCorrente));
+            JOptionPane.showMessageDialog(frame,
+                    "Non è possibile visualizzare date precedenti a oggi: viene mostrata la data odierna.",
+                    "Data non valida", JOptionPane.WARNING_MESSAGE);
+        }
+
         resetDettaglio();
 
         pannelloMappa.removeAll();
@@ -143,15 +161,22 @@ public class FormVisualizzazioneMappa {
     }
 
     /*
-     * Crea la riga grafica di una fila: l'etichetta della fila e una cella
-     * cliccabile per ogni ombrellone.
+     * Crea la riga grafica di una fila: l'etichetta della fila resta a sinistra
+     * (larghezza fissa) e gli ombrelloni sono centrati nella riga. Uno spazio a
+     * destra, largo quanto l'etichetta, bilancia quest'ultima così le celle
+     * risultano centrate rispetto all'intera mappa.
      */
     private JPanel creaRigaFila(int indiceFila, String etichettaFila,
                                 int[] numeri, long[] identificativi, boolean[] disponibili) {
-        JPanel riga = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JPanel riga = new JPanel(new BorderLayout());
         riga.setAlignmentX(Component.LEFT_ALIGNMENT);
-        riga.add(new JLabel(etichettaFila + ":"));
 
+        JLabel etichetta = new JLabel(etichettaFila + ":");
+        etichetta.setPreferredSize(new Dimension(LARGHEZZA_ETICHETTA_FILA,
+                etichetta.getPreferredSize().height));
+        riga.add(etichetta, BorderLayout.WEST);
+
+        JPanel celle = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 4));
         for (int j = 0; j < numeri.length; j++) {
             final int numero = numeri[j];
             final long id = identificativi[j];
@@ -163,8 +188,14 @@ public class FormVisualizzazioneMappa {
             cella.setBackground(disponibile ? COLORE_LIBERO : COLORE_OCCUPATO);
             cella.addActionListener(e -> selezionaOmbrellone(indiceFila, id, numero, etichettaFila, disponibile));
 
-            riga.add(cella);
+            celle.add(cella);
         }
+        riga.add(celle, BorderLayout.CENTER);
+
+        riga.add(Box.createHorizontalStrut(LARGHEZZA_ETICHETTA_FILA), BorderLayout.EAST);
+
+        // Riga larga quanto la mappa: BoxLayout la estende e le celle si centrano.
+        riga.setMaximumSize(new Dimension(Integer.MAX_VALUE, riga.getPreferredSize().height));
 
         return riga;
     }
@@ -241,5 +272,13 @@ public class FormVisualizzazioneMappa {
     private LocalDate leggiData() {
         Date data = (Date) selettoreData.getValue();
         return data.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /*
+     * Converte una data nel Date alla mezzanotte locale, formato atteso dal
+     * SpinnerDateModel.
+     */
+    private static Date aMezzanotte(LocalDate data) {
+        return Date.from(data.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 }

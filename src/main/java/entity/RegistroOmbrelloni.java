@@ -33,17 +33,22 @@ public class RegistroOmbrelloni {
      *
      * Strategia "replace": la configurazione precedente viene rimossa e
      * rigenerata a partire dai dati indicati. Per ogni fila si crea la
-     * FilaOmbrelloni con la sua posizione, poi i suoi ombrelloni numerati 1..N;
-     * il salvataggio della fila propaga (cascade) agli ombrelloni.
+     * FilaOmbrelloni con i suoi ombrelloni numerati 1..N; il salvataggio della
+     * fila propaga (cascade) agli ombrelloni.
      *
-     * I due array sono paralleli: tipi[i] e ombrelloniPerFila[i] descrivono la
-     * fila i-esima (numerata i+1).
+     * La posizione (prima/intermedia/ultima) non è scelta dal gestore: è derivata
+     * dall'ordine della fila tramite TipoFila.perPosizione, così l'ordinamento
+     * dello stabilimento (dal mare verso l'interno) non può essere incoerente.
+     *
+     * L'array ombrelloniPerFila descrive, per ogni fila i (numerata i+1), quanti
+     * ombrelloni contiene.
      */
-    public void configuraDisposizione(TipoFila[] tipi, int[] ombrelloniPerFila) {
+    public void configuraDisposizione(int[] ombrelloniPerFila) {
         eliminaTutteLeFile();
 
-        for (int i = 0; i < tipi.length; i++) {
-            FilaOmbrelloni fila = new FilaOmbrelloni(i + 1, tipi[i]);
+        int totale = ombrelloniPerFila.length;
+        for (int i = 0; i < totale; i++) {
+            FilaOmbrelloni fila = new FilaOmbrelloni(i + 1, TipoFila.perPosizione(i, totale));
 
             for (int numero = 1; numero <= ombrelloniPerFila[i]; numero++) {
                 fila.creaOmbrellone(numero);

@@ -31,10 +31,9 @@ public class FinestraGestore {
     public FinestraGestore() {
         // Apre il caso d'uso Configurazione stabilimento, nascondendo quest'area:
         // verrà rimostrata al termine (o all'annullamento) della configurazione.
-        bottoneConfiguraStabilimento.addActionListener(e -> {
-            frame.setVisible(false);
-            new FormConfigurazioneStabilimento(frame).apri();
-        });
+        // La riconfigurazione è distruttiva: se esistono prenotazioni attive non si
+        // apre nemmeno la schermata, si mostra subito l'errore.
+        bottoneConfiguraStabilimento.addActionListener(e -> apriConfigurazione());
 
         // Apre il caso d'uso Definizione tariffe, con la stessa logica.
         bottoneDefinisciTariffe.addActionListener(e -> {
@@ -69,6 +68,26 @@ public class FinestraGestore {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         return frame;
+    }
+
+    /*
+     * Apre la Configurazione stabilimento, ma solo se non ci sono prenotazioni
+     * attive: la riconfigurazione è distruttiva e ne rimuoverebbe le postazioni.
+     * In presenza di prenotazioni attive si mostra subito l'errore, senza aprire
+     * la schermata.
+     */
+    private void apriConfigurazione() {
+        if (GestoreStabilimento.prenotazioniAttivePresenti()) {
+            JOptionPane.showMessageDialog(frame,
+                    "Impossibile riconfigurare lo stabilimento: esistono prenotazioni attive.\n"
+                            + "La configurazione può essere modificata solo quando non ci sono "
+                            + "prenotazioni attive.",
+                    "Prenotazioni presenti", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        frame.setVisible(false);
+        new FormConfigurazioneStabilimento(frame).apri();
     }
 
     /*

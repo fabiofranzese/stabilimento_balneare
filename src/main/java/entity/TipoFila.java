@@ -25,4 +25,21 @@ public enum TipoFila {
     public String getEtichetta() {
         return etichetta;
     }
+
+    /*
+     * Regola di dominio: la posizione di una fila è derivata dal suo ordine nello
+     * stabilimento, non scelta dal gestore. La prima fila è la PRIMA_FILA (anche
+     * se è l'unica), l'ultima è la ULTIMA_FILA, tutte quelle in mezzo sono
+     * FILA_INTERMEDIA. Il primo controllo che riesce vince: così con una sola fila
+     * il risultato è PRIMA_FILA.
+     */
+    public static TipoFila perPosizione(int indice, int totale) {
+        if (indice <= 0) {
+            return PRIMA_FILA;
+        }
+        if (indice >= totale - 1) {
+            return ULTIMA_FILA;
+        }
+        return FILA_INTERMEDIA;
+    }
 }

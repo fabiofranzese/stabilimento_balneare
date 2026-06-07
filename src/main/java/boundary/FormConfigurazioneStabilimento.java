@@ -29,7 +29,6 @@ public class FormConfigurazioneStabilimento {
     private JPanel pannelloConfigurazione;
 
     // Sezione "Disposizione file".
-    private JComboBox<String> comboTipoFila;
     private JTextField campoNumeroOmbrelloni;
     private JButton bottoneAggiungiFila;
     private JButton bottoneRimuoviFila;
@@ -49,12 +48,9 @@ public class FormConfigurazioneStabilimento {
     private final JFrame finestraChiamante;
     private JFrame frame;
 
-    // Etichette dei tipi di fila (dal Controller), usate per la combo e l'elenco.
-    private final String[] etichetteTipo = GestoreStabilimento.tipiFila();
-
     // Stato in memoria della configurazione in corso di modifica.
-    // File: array paralleli indice-tipo / numero-ombrelloni, in ordine di fila.
-    private final List<Integer> tipiFila = new ArrayList<>();
+    // File: numero di ombrelloni per fila, in ordine. La posizione
+    // (prima/intermedia/ultima) non è scelta qui: la deriva il sistema dall'ordine.
     private final List<Integer> ombrelloniPerFila = new ArrayList<>();
     // Servizi: array paralleli descrizione / capacità.
     private final List<String> descrizioniServizi = new ArrayList<>();
@@ -65,10 +61,7 @@ public class FormConfigurazioneStabilimento {
 
     public FormConfigurazioneStabilimento(JFrame finestraChiamante) {
         this.finestraChiamante = finestraChiamante;
-        // Popola la combo dei tipi di fila e collega i modelli alle liste.
-        for (String etichetta : etichetteTipo) {
-            comboTipoFila.addItem(etichetta);
-        }
+        // Collega i modelli alle liste.
         listaFile.setModel(modelloFile);
         listaServizi.setModel(modelloServizi);
 
@@ -110,7 +103,6 @@ public class FormConfigurazioneStabilimento {
             return;
         }
 
-        tipiFila.add(comboTipoFila.getSelectedIndex());
         ombrelloniPerFila.add(numero);
         campoNumeroOmbrelloni.setText("");
         aggiornaListaFile();
@@ -122,15 +114,20 @@ public class FormConfigurazioneStabilimento {
             return;
         }
 
-        tipiFila.remove(selezione);
         ombrelloniPerFila.remove(selezione);
         aggiornaListaFile();
     }
 
+    /*
+     * Ridisegna l'elenco delle file. La posizione (prima/intermedia/ultima) è
+     * derivata dal sistema in base all'ordine: si rilegge dal Controller a ogni
+     * aggiunta/rimozione, così le etichette restano coerenti.
+     */
     private void aggiornaListaFile() {
+        String[] posizioni = GestoreStabilimento.etichettePosizioniFile(ombrelloniPerFila.size());
         modelloFile.clear();
-        for (int i = 0; i < tipiFila.size(); i++) {
-            modelloFile.addElement("Fila " + (i + 1) + " — " + etichetteTipo[tipiFila.get(i)]
+        for (int i = 0; i < ombrelloniPerFila.size(); i++) {
+            modelloFile.addElement("Fila " + (i + 1) + " — " + posizioni[i]
                     + " — " + ombrelloniPerFila.get(i) + " ombrelloni");
         }
     }
@@ -184,7 +181,6 @@ public class FormConfigurazioneStabilimento {
 
     private void salva() {
         int esito = GestoreStabilimento.salvaConfigurazione(
-                toIntArray(tipiFila),
                 toIntArray(ombrelloniPerFila),
                 descrizioniServizi.toArray(new String[0]),
                 toIntArray(capacitaServizi));
@@ -225,11 +221,9 @@ public class FormConfigurazioneStabilimento {
     // --- Precaricamento della configurazione esistente ---
 
     private void precaricaConfigurazione() {
-        int[] tipiCorrenti = GestoreStabilimento.tipiFilaCorrenti();
         int[] ombrelloniCorrenti = GestoreStabilimento.ombrelloniPerFilaCorrenti();
-        for (int i = 0; i < tipiCorrenti.length; i++) {
-            tipiFila.add(tipiCorrenti[i]);
-            ombrelloniPerFila.add(ombrelloniCorrenti[i]);
+        for (int ombrelloni : ombrelloniCorrenti) {
+            ombrelloniPerFila.add(ombrelloni);
         }
         aggiornaListaFile();
 

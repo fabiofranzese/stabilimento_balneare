@@ -62,16 +62,17 @@ public class GestoreStabilimento {
     public static final int ERRORE_PRENOTAZIONE = 24;
 
     /*
-     * Etichette in italiano dei tipi di fila, nell'ordine dell'enum TipoFila:
-     * servono a popolare la combo del form. L'indice scelto nella combo
-     * corrisponde a TipoFila.values()[indice].
+     * Etichette in italiano della posizione di ogni fila, derivate dall'ordine:
+     * con numeroFile file restituisce, per ogni indice, l'etichetta di
+     * TipoFila.perPosizione (prima / intermedia / ultima). Il Boundary la usa per
+     * mostrare la posizione assegnata dal sistema, che si aggiorna a ogni
+     * aggiunta/rimozione di una fila. La regola resta nel dominio (TipoFila).
      */
-    public static String[] tipiFila() {
-        TipoFila[] valori = TipoFila.values();
-        String[] etichette = new String[valori.length];
+    public static String[] etichettePosizioniFile(int numeroFile) {
+        String[] etichette = new String[Math.max(0, numeroFile)];
 
-        for (int i = 0; i < valori.length; i++) {
-            etichette[i] = valori[i].getEtichetta();
+        for (int i = 0; i < etichette.length; i++) {
+            etichette[i] = TipoFila.perPosizione(i, numeroFile).getEtichetta();
         }
 
         return etichette;
@@ -80,17 +81,17 @@ public class GestoreStabilimento {
     /*
      * Caso d'uso Configurazione stabilimento.
      *
-     * Riceve la disposizione (per ogni fila: indice del tipo + numero di
-     * ombrelloni) e i servizi aggiuntivi (per ognuno: descrizione + capacità).
-     * Valida i dati, poi rigenera disposizione e servizi (strategia "replace").
+     * Riceve la disposizione (per ogni fila: numero di ombrelloni) e i servizi
+     * aggiuntivi (per ognuno: descrizione + capacità). Valida i dati, poi rigenera
+     * disposizione e servizi (strategia "replace"). La posizione delle file non è
+     * scelta dal gestore: è derivata dall'ordine in RegistroOmbrelloni.
      *
-     * Gli array delle file (tipiFilaIndici, ombrelloniPerFila) sono paralleli,
-     * come quelli dei servizi (descrizioniServizi, capacitaServizi).
+     * Gli array dei servizi (descrizioniServizi, capacitaServizi) sono paralleli.
      */
-    public static int salvaConfigurazione(int[] tipiFilaIndici, int[] ombrelloniPerFila,
+    public static int salvaConfigurazione(int[] ombrelloniPerFila,
                                           String[] descrizioniServizi, int[] capacitaServizi) {
 
-        if (!datiValidi(tipiFilaIndici, ombrelloniPerFila, descrizioniServizi, capacitaServizi)) {
+        if (!datiValidi(ombrelloniPerFila, descrizioniServizi, capacitaServizi)) {
             return DATI_NON_VALIDI;
         }
 
@@ -103,13 +104,7 @@ public class GestoreStabilimento {
         }
 
         try {
-            TipoFila[] valori = TipoFila.values();
-            TipoFila[] tipi = new TipoFila[tipiFilaIndici.length];
-            for (int i = 0; i < tipiFilaIndici.length; i++) {
-                tipi[i] = valori[tipiFilaIndici[i]];
-            }
-
-            new RegistroOmbrelloni().configuraDisposizione(tipi, ombrelloniPerFila);
+            new RegistroOmbrelloni().configuraDisposizione(ombrelloniPerFila);
             new RegistroServiziAggiuntivi().sostituisciServizi(descrizioniServizi, capacitaServizi);
 
             return CONFIGURAZIONE_OK;
@@ -120,19 +115,17 @@ public class GestoreStabilimento {
         }
     }
 
+    /*
+     * Indica se esiste almeno una prenotazione attiva. La riconfigurazione dello
+     * stabilimento è distruttiva: il Boundary usa questa precondizione per non
+     * aprire nemmeno la configurazione quando ci sono prenotazioni attive.
+     */
+    public static boolean prenotazioniAttivePresenti() {
+        return new RegistroPrenotazioni().esistonoPrenotazioniAttive();
+    }
+
     // --- Lettura della configurazione corrente (per precaricare il form) ---
     // Si restituiscono solo tipi primitivi/array: nessuna Entity verso il Boundary.
-
-    public static int[] tipiFilaCorrenti() {
-        List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
-        int[] indici = new int[file.size()];
-
-        for (int i = 0; i < file.size(); i++) {
-            indici[i] = file.get(i).getTipoFila().ordinal();
-        }
-
-        return indici;
-    }
 
     public static int[] ombrelloniPerFilaCorrenti() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
@@ -169,29 +162,23 @@ public class GestoreStabilimento {
 
     /*
      * Validazione dei dati di configurazione:
-     * - almeno una fila;
-     * - array delle file coerenti in lunghezza; ogni indice di tipo valido;
-     *   ogni fila con almeno un ombrellone;
+     * - almeno una fila, ciascuna con almeno un ombrellone;
      * - array dei servizi coerenti in lunghezza; ogni descrizione non vuota;
      *   ogni capacità non negativa.
      */
-    private static boolean datiValidi(int[] tipiFilaIndici, int[] ombrelloniPerFila,
+    private static boolean datiValidi(int[] ombrelloniPerFila,
                                       String[] descrizioniServizi, int[] capacitaServizi) {
 
-        if (tipiFilaIndici == null || ombrelloniPerFila == null
+        if (ombrelloniPerFila == null
                 || descrizioniServizi == null || capacitaServizi == null) {
             return false;
         }
 
-        if (tipiFilaIndici.length == 0 || tipiFilaIndici.length != ombrelloniPerFila.length) {
+        if (ombrelloniPerFila.length == 0) {
             return false;
         }
 
-        int numeroTipi = TipoFila.values().length;
-        for (int i = 0; i < tipiFilaIndici.length; i++) {
-            if (tipiFilaIndici[i] < 0 || tipiFilaIndici[i] >= numeroTipi) {
-                return false;
-            }
+        for (int i = 0; i < ombrelloniPerFila.length; i++) {
             if (ombrelloniPerFila[i] < 1) {
                 return false;
             }
