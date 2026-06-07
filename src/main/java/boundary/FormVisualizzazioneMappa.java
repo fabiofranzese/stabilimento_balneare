@@ -44,14 +44,20 @@ public class FormVisualizzazioneMappa {
     // Finestra da cui si è aperta la mappa (l'area Cliente), nascosta mentre
     // questo form è aperto: viene rimostrata alla chiusura.
     private final JFrame finestraChiamante;
+    // Email del cliente autenticato, propagata al caso d'uso Effettua Prenotazione.
+    private final String emailCliente;
     private JFrame frame;
 
     // Data per cui è mostrata la mappa e ombrellone attualmente selezionato.
     private LocalDate dataCorrente;
     private long idOmbrelloneSelezionato = -1;
+    private int numeroSelezionato = -1;
+    private String etichettaFilaSelezionata;
+    private boolean ombrellonePrenotabile = false;
 
-    public FormVisualizzazioneMappa(JFrame finestraChiamante) {
+    public FormVisualizzazioneMappa(JFrame finestraChiamante, String emailCliente) {
         this.finestraChiamante = finestraChiamante;
+        this.emailCliente = emailCliente;
 
         // Trasforma lo spinner in un selettore di data (gg/mm/aaaa).
         selettoreData.setModel(new SpinnerDateModel());
@@ -75,6 +81,16 @@ public class FormVisualizzazioneMappa {
             @Override
             public void windowClosing(WindowEvent e) {
                 finestraChiamante.setVisible(true);
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+                // Tornando sulla mappa (es. dopo una prenotazione), si ricalcola la
+                // disponibilità per la data corrente, così la cella appena prenotata
+                // appare occupata. Al primo avvio non c'è ancora una mappa da aggiornare.
+                if (dataCorrente != null) {
+                    mostraMappa();
+                }
             }
         });
         frame.pack();
@@ -160,6 +176,9 @@ public class FormVisualizzazioneMappa {
     private void selezionaOmbrellone(int indiceFila, long id, int numero,
                                      String etichettaFilaTesto, boolean disponibile) {
         idOmbrelloneSelezionato = id;
+        numeroSelezionato = numero;
+        etichettaFilaSelezionata = etichettaFilaTesto;
+        ombrellonePrenotabile = false;
 
         etichettaNumero.setText("Ombrellone n. " + numero);
         etichettaFila.setText(etichettaFilaTesto);
@@ -185,25 +204,33 @@ public class FormVisualizzazioneMappa {
         etichettaDisponibilita.setText("Stato: Disponibile");
         etichettaPrezzo.setText("Prezzo (" + GestoreStabilimento.nomeStagione(dataCorrente)
                 + "): " + String.format("€ %.2f", prezzo));
+        ombrellonePrenotabile = true;
         bottonePrenota.setEnabled(true);
     }
 
     /*
-     * Avvia (in seguito) il caso d'uso Effettua Prenotazione per l'ombrellone
-     * selezionato e la data corrente. Per ora è un segnaposto.
+     * Punto di estensione «extend» verso il caso d'uso Effettua Prenotazione:
+     * apre il form di prenotazione per l'ombrellone selezionato e la data corrente,
+     * nascondendo la mappa. Alla chiusura la mappa torna visibile e si aggiorna
+     * (windowActivated), così l'eventuale nuova prenotazione si riflette subito.
      */
     private void prenota() {
-        // NOTE: nel caso d'uso Effettua Prenotazione qui si aprirà il relativo
-        // form, passando idOmbrelloneSelezionato e dataCorrente.
-        JOptionPane.showMessageDialog(frame,
-                "La prenotazione sarà disponibile col prossimo caso d'uso.",
-                "Prenota", JOptionPane.INFORMATION_MESSAGE);
+        if (!ombrellonePrenotabile || idOmbrelloneSelezionato < 0) {
+            return;
+        }
+
+        frame.setVisible(false);
+        new FormEffettuaPrenotazione(frame, emailCliente, idOmbrelloneSelezionato,
+                numeroSelezionato, etichettaFilaSelezionata, dataCorrente).apri();
     }
 
     // --- Utilità ---
 
     private void resetDettaglio() {
         idOmbrelloneSelezionato = -1;
+        numeroSelezionato = -1;
+        etichettaFilaSelezionata = null;
+        ombrellonePrenotabile = false;
         etichettaNumero.setText("Ombrellone n. -");
         etichettaFila.setText("Fila -");
         etichettaPrezzo.setText("Prezzo -");

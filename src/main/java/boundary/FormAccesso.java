@@ -73,9 +73,10 @@ public class FormAccesso {
         switch (esito) {
             case GestoreUtenti.LOGIN_CLIENTE:
                 // Accesso riuscito: la schermata principale non serve più.
+                // Si propaga l'email del cliente (identità BCED-safe) all'area Cliente.
                 finestraChiamante.dispose();
                 frame.dispose();
-                new FinestraCliente().apri();
+                new FinestraCliente(email).apri();
                 break;
 
             case GestoreUtenti.LOGIN_GESTORE:

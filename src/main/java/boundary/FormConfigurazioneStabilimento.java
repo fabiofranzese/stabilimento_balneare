@@ -206,6 +206,14 @@ public class FormConfigurazioneStabilimento {
                         "Errore", JOptionPane.ERROR_MESSAGE);
                 break;
 
+            case GestoreStabilimento.PRENOTAZIONI_PRESENTI:
+                JOptionPane.showMessageDialog(frame,
+                        "Impossibile riconfigurare lo stabilimento: esistono prenotazioni attive.\n"
+                                + "La configurazione può essere modificata solo quando non ci sono "
+                                + "prenotazioni attive.",
+                        "Prenotazioni presenti", JOptionPane.WARNING_MESSAGE);
+                break;
+
             default:
                 JOptionPane.showMessageDialog(frame,
                         "Si è verificato un errore durante il salvataggio. Riprova.",

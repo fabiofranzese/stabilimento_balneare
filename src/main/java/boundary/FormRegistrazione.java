@@ -73,10 +73,11 @@ public class FormRegistrazione {
             case GestoreUtenti.REGISTRAZIONE_OK:
                 // La registrazione effettua direttamente l'accesso: l'utente
                 // entra subito nell'area Cliente, senza dover accedere di nuovo.
+                // Si propaga l'email appena registrata (identità del cliente).
                 // La schermata principale non serve più.
                 finestraChiamante.dispose();
                 frame.dispose();
-                new FinestraCliente().apri();
+                new FinestraCliente(email).apri();
                 break;
 
             case GestoreUtenti.EMAIL_GIA_REGISTRATA:

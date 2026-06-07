@@ -1,12 +1,17 @@
 package controller;
 
+import database.GestorePersistenza;
+import entity.Cliente;
 import entity.FilaOmbrelloni;
 import entity.Ombrellone;
+import entity.OmbrelloneNonDisponibileException;
 import entity.RegistroOmbrelloni;
 import entity.RegistroPrenotazioni;
 import entity.RegistroServiziAggiuntivi;
 import entity.RegistroTariffe;
+import entity.RegistroUtenti;
 import entity.ServizioAggiuntivo;
+import entity.ServizioEsauritoException;
 import entity.Stagione;
 import entity.TariffaServizioAggiuntivo;
 import entity.TariffaTipoFila;
@@ -15,7 +20,9 @@ import entity.TipoFila;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /*
  * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso del
@@ -40,11 +47,19 @@ public class GestoreStabilimento {
     public static final int CONFIGURAZIONE_OK = 0;
     public static final int DATI_NON_VALIDI = 1;
     public static final int ERRORE_CONFIGURAZIONE = 2;
+    public static final int PRENOTAZIONI_PRESENTI = 3;
 
     // Esiti della definizione tariffe.
     public static final int TARIFFE_OK = 10;
     public static final int TARIFFA_NON_VALIDA = 11;
     public static final int ERRORE_TARIFFE = 12;
+
+    // Esiti della prenotazione.
+    public static final int PRENOTAZIONE_OK = 20;
+    public static final int OMBRELLONE_NON_DISPONIBILE = 21;
+    public static final int SERVIZIO_ESAURITO = 22;
+    public static final int DATI_PRENOTAZIONE_NON_VALIDI = 23;
+    public static final int ERRORE_PRENOTAZIONE = 24;
 
     /*
      * Etichette in italiano dei tipi di fila, nell'ordine dell'enum TipoFila:
@@ -77,6 +92,14 @@ public class GestoreStabilimento {
 
         if (!datiValidi(tipiFilaIndici, ombrelloniPerFila, descrizioniServizi, capacitaServizi)) {
             return DATI_NON_VALIDI;
+        }
+
+        // Precondizione: la riconfigurazione è distruttiva (sostituisce file e
+        // servizi). Se esiste anche una sola prenotazione attiva, le sue
+        // postazioni/servizi non possono essere rimossi senza incoerenze: si
+        // blocca l'operazione.
+        if (new RegistroPrenotazioni().esistonoPrenotazioniAttive()) {
+            return PRENOTAZIONI_PRESENTI;
         }
 
         try {
@@ -554,5 +577,229 @@ public class GestoreStabilimento {
         List<Ombrellone> ombrelloni = new ArrayList<>(fila.getOmbrelloni());
         ombrelloni.sort(Comparator.comparingInt(Ombrellone::getNumero));
         return ombrelloni;
+    }
+
+    // ===== Effettua prenotazione =====
+    //
+    // Operazioni del caso d'uso Effettua Prenotazione (estensione di
+    // Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e servizi
+    // con valori semplici (email, id): nessuna Entity attraversa il confine B/C.
+
+    /*
+     * Servizi aggiuntivi che il cliente può prenotare per la data scelta: quelli
+     * con disponibilità residua positiva E con una tariffa definita per la stagione
+     * di quella data. I servizi esauriti o senza tariffa non sono mostrati. Su
+     * questo elenco (ordine stabile) si allineano descrizioniServizi(data),
+     * idServizi(data), residuoServizi(data) e prezziServizi(data).
+     */
+    private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
+        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
+        Stagione stagione = Stagione.perData(data);
+        List<ServizioAggiuntivo> selezionabili = new ArrayList<>();
+
+        for (ServizioAggiuntivo servizio : serviziOrdinati()) {
+            boolean disponibile = registroPrenotazioni.residuoServizio(servizio, data) > 0;
+            boolean tariffato = costoServizio(servizio, stagione) >= 0;
+            if (disponibile && tariffato) {
+                selezionabili.add(servizio);
+            }
+        }
+
+        return selezionabili;
+    }
+
+    /*
+     * Descrizioni dei servizi prenotabili per la data: descrizioniServizi(data)[i],
+     * idServizi(data)[i], residuoServizi(data)[i] e prezziServizi(data)[i]
+     * descrivono lo stesso servizio.
+     */
+    public static String[] descrizioniServizi(LocalDate data) {
+        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
+        String[] descrizioni = new String[servizi.size()];
+
+        for (int i = 0; i < servizi.size(); i++) {
+            descrizioni[i] = servizi.get(i).getDescrizione();
+        }
+
+        return descrizioni;
+    }
+
+    /*
+     * Id dei servizi prenotabili per la data, allineati a descrizioniServizi(data):
+     * identificano il servizio scelto nella prenotazione.
+     */
+    public static long[] idServizi(LocalDate data) {
+        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
+        long[] identificativi = new long[servizi.size()];
+
+        for (int i = 0; i < servizi.size(); i++) {
+            identificativi[i] = servizi.get(i).getId();
+        }
+
+        return identificativi;
+    }
+
+    /*
+     * Disponibilità residua di ciascun servizio prenotabile per la data (dato
+     * derivato dalle prenotazioni attive). È la quantità massima ordinabile.
+     */
+    public static int[] residuoServizi(LocalDate data) {
+        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
+        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
+        int[] residui = new int[servizi.size()];
+
+        for (int i = 0; i < servizi.size(); i++) {
+            residui[i] = registroPrenotazioni.residuoServizio(servizi.get(i), data);
+        }
+
+        return residui;
+    }
+
+    /*
+     * Prezzo unitario di ciascun servizio prenotabile per la stagione della data.
+     * Allineato a descrizioniServizi(data).
+     */
+    public static double[] prezziServizi(LocalDate data) {
+        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
+        Stagione stagione = Stagione.perData(data);
+        double[] prezzi = new double[servizi.size()];
+
+        for (int i = 0; i < servizi.size(); i++) {
+            prezzi[i] = costoServizio(servizi.get(i), stagione);
+        }
+
+        return prezzi;
+    }
+
+    /*
+     * Prezzo dell'ombrellone (in base al tipo della sua fila) per la stagione in
+     * cui cade la data; -1 se la tariffa non è definita o l'ombrellone non esiste.
+     */
+    public static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
+        Ombrellone ombrellone = new GestorePersistenza().trovaPerId(Ombrellone.class, idOmbrellone);
+
+        if (ombrellone == null || ombrellone.getFila() == null) {
+            return -1;
+        }
+
+        return costoTipoFila(ombrellone.getFila().getTipoFila(), Stagione.perData(data));
+    }
+
+    /*
+     * Prezzo totale della prenotazione: ombrellone + servizi selezionati per le
+     * rispettive quantità, alla stagione della data. Gli array dei servizi
+     * (idServiziScelti, quantita) sono paralleli. Le tariffe non definite (-1) non
+     * incidono sul totale.
+     */
+    public static double prezzoTotale(long idOmbrellone, long[] idServiziScelti,
+                                      int[] quantita, LocalDate data) {
+        double totale = Math.max(0, prezzoOmbrellone(idOmbrellone, data));
+
+        if (idServiziScelti != null && quantita != null
+                && idServiziScelti.length == quantita.length) {
+            Stagione stagione = Stagione.perData(data);
+            for (int i = 0; i < idServiziScelti.length; i++) {
+                if (quantita[i] <= 0) {
+                    continue;
+                }
+                ServizioAggiuntivo servizio =
+                        new GestorePersistenza().trovaPerId(ServizioAggiuntivo.class, idServiziScelti[i]);
+                if (servizio != null) {
+                    totale += Math.max(0, costoServizio(servizio, stagione)) * quantita[i];
+                }
+            }
+        }
+
+        return totale;
+    }
+
+    /*
+     * Caso d'uso Effettua Prenotazione.
+     *
+     * Risolve cliente (per email) e ombrellone (per id) e costruisce la mappa
+     * servizio→quantità (solo le quantità positive), poi delega al
+     * RegistroPrenotazioni la creazione con controllo dei conflitti. Traduce le
+     * eccezioni di dominio nei codici di esito per il Boundary. Gli array
+     * idServiziScelti e quantita sono paralleli.
+     */
+    public static int effettuaPrenotazione(String emailCliente, long idOmbrellone,
+                                           LocalDate data, long[] idServiziScelti, int[] quantita) {
+
+        if (emailCliente == null || data == null) {
+            return DATI_PRENOTAZIONE_NON_VALIDI;
+        }
+
+        if ((idServiziScelti == null) != (quantita == null)
+                || (idServiziScelti != null && idServiziScelti.length != quantita.length)) {
+            return DATI_PRENOTAZIONE_NON_VALIDI;
+        }
+
+        GestorePersistenza gestorePersistenza = new GestorePersistenza();
+
+        Cliente cliente = clientePerEmail(emailCliente);
+        Ombrellone ombrellone = gestorePersistenza.trovaPerId(Ombrellone.class, idOmbrellone);
+
+        if (cliente == null || ombrellone == null) {
+            return DATI_PRENOTAZIONE_NON_VALIDI;
+        }
+
+        Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
+        if (idServiziScelti != null) {
+            for (int i = 0; i < idServiziScelti.length; i++) {
+                if (quantita[i] <= 0) {
+                    continue;
+                }
+                ServizioAggiuntivo servizio =
+                        gestorePersistenza.trovaPerId(ServizioAggiuntivo.class, idServiziScelti[i]);
+                if (servizio == null) {
+                    return DATI_PRENOTAZIONE_NON_VALIDI;
+                }
+                quantitaServizi.put(servizio, quantita[i]);
+            }
+        }
+
+        // Prezzo "congelato" al momento della prenotazione, alle tariffe vigenti.
+        double totale = prezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
+
+        try {
+            new RegistroPrenotazioni()
+                    .effettuaPrenotazione(cliente, ombrellone, data, quantitaServizi, totale);
+            return PRENOTAZIONE_OK;
+
+        } catch (OmbrelloneNonDisponibileException e) {
+            return OMBRELLONE_NON_DISPONIBILE;
+        } catch (ServizioEsauritoException e) {
+            return SERVIZIO_ESAURITO;
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ERRORE_PRENOTAZIONE;
+        }
+    }
+
+    // --- Helper di prezzo / risoluzione ---
+
+    private static Cliente clientePerEmail(String email) {
+        return new RegistroUtenti().cercaUtentePerEmail(email) instanceof Cliente cliente
+                ? cliente
+                : null;
+    }
+
+    private static double costoTipoFila(TipoFila tipo, Stagione stagione) {
+        for (TariffaTipoFila tariffa : new RegistroTariffe().getTariffeTipoFila()) {
+            if (tariffa.getTipoFila() == tipo && tariffa.getStagione() == stagione) {
+                return tariffa.getCosto();
+            }
+        }
+        return -1;
+    }
+
+    private static double costoServizio(ServizioAggiuntivo servizio, Stagione stagione) {
+        for (TariffaServizioAggiuntivo tariffa : new RegistroTariffe().getTariffeServizio()) {
+            if (tariffa.getServizio().getId().equals(servizio.getId())
+                    && tariffa.getStagione() == stagione) {
+                return tariffa.getCosto();
+            }
+        }
+        return -1;
     }
 }

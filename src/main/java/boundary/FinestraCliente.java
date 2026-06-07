@@ -20,14 +20,20 @@ public class FinestraCliente {
     private JButton bottoneVisualizzaMappa;
     private JButton bottoneLogout;
 
+    // Email del cliente autenticato (identità propagata dall'accesso): serve ai
+    // casi d'uso che agiscono per conto del cliente, come Effettua Prenotazione.
+    private final String emailCliente;
+
     private JFrame frame;
 
-    public FinestraCliente() {
+    public FinestraCliente(String emailCliente) {
+        this.emailCliente = emailCliente;
+
         // Apre il caso d'uso Visualizzazione Mappa, nascondendo quest'area:
         // verrà rimostrata alla chiusura della mappa.
         bottoneVisualizzaMappa.addActionListener(e -> {
             frame.setVisible(false);
-            new FormVisualizzazioneMappa(frame).apri();
+            new FormVisualizzazioneMappa(frame, emailCliente).apri();
         });
 
         // Il logout chiude quest'area e riporta alla schermata principale.
