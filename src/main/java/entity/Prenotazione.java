@@ -49,8 +49,19 @@ public class Prenotazione {
     @JoinColumn(name = "ombrellone_id")
     private Ombrellone ombrellone;
 
-    @ManyToOne
-    @JoinColumn(name = "stato_id")
+    /*
+     * Stato della prenotazione (pattern State). Lo stato è un oggetto puramente
+     * comportamentale (non una Entity): di esso si persiste solo il "tipo" come una
+     * colonna "tipo_stato" su questa stessa tabella (tipoStato), mentre l'istanza
+     * concreta Prenotata/Annullata è @Transient e viene ricostruita in lettura
+     * (@PostLoad). La transizione (new Annullata()) è così un semplice UPDATE della
+     * colonna; nessuna tabella o riga-stato separata. Le due rappresentazioni sono
+     * tenute allineate da setStato.
+     */
+    @Column(name = "tipo_stato")
+    private String tipoStato;
+
+    @Transient
     private StatoPrenotazione stato;
 
     /*
@@ -82,7 +93,7 @@ public class Prenotazione {
     public Prenotazione(LocalDate data, Ombrellone ombrellone, StatoPrenotazione stato) {
         this.data = data;
         this.ombrellone = ombrellone;
-        this.stato = stato;
+        setStato(stato);
     }
 
     public Prenotazione(LocalDate data, Ombrellone ombrellone, StatoPrenotazione stato,
@@ -90,7 +101,7 @@ public class Prenotazione {
                         LocalDateTime dataCreazione, double prezzoTotale) {
         this.data = data;
         this.ombrellone = ombrellone;
-        this.stato = stato;
+        setStato(stato);
         this.cliente = cliente;
         if (quantitaServizi != null) {
             this.quantitaServizi = quantitaServizi;
@@ -113,16 +124,19 @@ public class Prenotazione {
     }
 
     /*
-     * Transizione di stato (pattern State): porta la prenotazione nello stato
-     * "annullata" indicato (la riga singleton predisposta all'avvio).
+     * Evento "annulla" del pattern State: il Context delega allo stato corrente
+     * (come Porta.click() -> stato.click(this)). È lo stato a decidere la
+     * transizione (Prenotata -> Annullata) o a ignorarla (Annullata: no-op).
      *
-     * NOTE: la precondizione (annullabilità) è verificata a monte dal Controller
-     * tramite isAnnullabile(oggi); qui si esegue la sola transizione. È una
-     * separazione di responsabilità coerente con il resto del progetto (la
-     * verifica resta nel dominio, l'orchestrazione nel Controller).
+     * NOTE: la precondizione temporale (oggi < data) è verificata a monte dal
+     * Controller tramite isAnnullabile(oggi); qui lo stato gestisce la sola
+     * validità di stato. La verifica di dominio resta nel dominio, l'orchestrazione
+     * nel Controller.
      */
-    public void annulla(StatoPrenotazione statoAnnullata) {
-        this.stato = statoAnnullata;
+    public void annulla() {
+        if (stato != null) {
+            stato.annulla(this);
+        }
     }
 
     public Long getId() {
@@ -153,8 +167,29 @@ public class Prenotazione {
         return stato;
     }
 
+    /*
+     * Imposta lo stato (oggetto comportamentale) e ne allinea la rappresentazione
+     * persistente "tipo_stato": è l'unico punto che traduce l'istanza nel suo tipo,
+     * così le due viste dello stesso stato non possono divergere.
+     */
     public void setStato(StatoPrenotazione stato) {
         this.stato = stato;
+        this.tipoStato = (stato instanceof Annullata) ? "ANNULLATA"
+                : (stato != null ? "PRENOTATA" : null);
+    }
+
+    /*
+     * Dopo il caricamento dal DB, ricostruisce l'istanza concreta dello stato dal
+     * "tipo_stato" salvato (lo stato è @Transient): è il verso di lettura del
+     * pattern State persistito come singola colonna, senza tabella separata.
+     */
+    @PostLoad
+    private void ricostruisciStato() {
+        if (tipoStato == null) {
+            stato = null;
+        } else {
+            stato = "ANNULLATA".equals(tipoStato) ? new Annullata() : new Prenotata();
+        }
     }
 
     public LocalDateTime getDataCreazione() {

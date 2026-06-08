@@ -1,6 +1,8 @@
 package boundary;
 
+import boundary.notifica.AdapterServizioNotifica;
 import controller.GestoreStabilimento;
+import notifica.CanaleComunicazioneEsterno;
 
 import javax.swing.*;
 import java.awt.*;
@@ -53,6 +55,11 @@ public class FormEffettuaPrenotazione {
     // Selettori di quantità dei servizi e id corrispondenti (allineati per indice).
     private final List<JSpinner> spinnerServizi = new ArrayList<>();
     private long[] idServiziVisualizzati = new long[0];
+
+    // Adapter verso il sistema esterno di notifica: il Boundary effettua la chiamata
+    // al canale alla conferma dell'operazione (niente più Observer).
+    private final AdapterServizioNotifica notificatore =
+            new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 
     public FormEffettuaPrenotazione(JFrame finestraChiamante, String emailCliente,
                                     long idOmbrellone, int numeroOmbrellone,
@@ -155,16 +162,26 @@ public class FormEffettuaPrenotazione {
      * incluse le estensioni (ombrellone occupato nel frattempo, servizio esaurito).
      */
     private void conferma() {
+        int[] quantita = quantitaCorrenti();
         int esito = GestoreStabilimento.effettuaPrenotazione(
-                emailCliente, idOmbrellone, data, idServiziVisualizzati, quantitaCorrenti());
+                emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
 
         switch (esito) {
-            case GestoreStabilimento.PRENOTAZIONE_OK:
+            case GestoreStabilimento.PRENOTAZIONE_OK: {
+                // Ricevuta la conferma, il Boundary innesca la notifica al sistema
+                // esterno: chiede al Controller il testo del messaggio e lo invia
+                // al destinatario (l'email del cliente autenticato) tramite l'Adapter.
+                String corpoNotifica = GestoreStabilimento.messaggioNotificaPrenotazione(
+                        emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
+                if (corpoNotifica != null) {
+                    notificatore.prenotazioneEffettuata(emailCliente, corpoNotifica);
+                }
                 JOptionPane.showMessageDialog(frame,
                         "Prenotazione effettuata. Riceverai una notifica di conferma.",
                         "Prenotazione confermata", JOptionPane.INFORMATION_MESSAGE);
                 tornaAllaMappa();
                 break;
+            }
 
             case GestoreStabilimento.OMBRELLONE_NON_DISPONIBILE:
                 // Estensione 2.a: occupato da un altro utente durante la selezione.

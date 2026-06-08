@@ -1,29 +1,17 @@
 package entity;
 
-import jakarta.persistence.*;
-
 /*
  * StatoPrenotazione è la radice del pattern State applicato alla Prenotazione
  * (livello Entity, BCED). Le sottoclassi concrete Prenotata e Annullata
  * incapsulano il comportamento che varia con lo stato.
  *
- * Mappatura: come Utente e Tariffa, si usa l'ereditarietà SINGLE_TABLE con
- * colonna discriminante "tipo_stato". Gli stati sono pochi e condivisi: vengono
- * predisposti come righe "singleton" (vedi setup.DatiIniziali) e referenziati da
- * ogni Prenotazione tramite @ManyToOne.
- *
- * NOTE: in questo caso d'uso (Visualizzazione Mappa) si usa solo la lettura dello
- * stato (per il calcolo della disponibilità). Le transizioni di stato (creazione
- * in "prenotata", annullamento) sono introdotte nei casi d'uso successivi.
+ * Oggetto puramente comportamentale, NON una Entity JPA: come nell'esempio
+ * Porta/StatoPorta del docente, lo stato non ha una tabella propria. La sua
+ * persistenza è ridotta a una sola colonna "tipo_stato" sulla tabella
+ * Prenotazione: in scrittura se ne salva il tipo (Prenotazione.setStato), in
+ * lettura l'istanza concreta è ricostruita da Prenotazione (@PostLoad).
  */
-@Entity
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "tipo_stato", discriminatorType = DiscriminatorType.STRING)
 public abstract class StatoPrenotazione {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     /*
      * Una prenotazione è "attiva" se occupa effettivamente la postazione: solo
@@ -35,24 +23,25 @@ public abstract class StatoPrenotazione {
      * Comportamento che varia con lo stato (pattern State): indica se da questo
      * stato è ammessa la transizione verso "annullata". Solo una prenotazione
      * ancora attiva (Prenotata) può essere annullata; una già Annullata no.
+     * Usata dalla GUI (per abilitare "Annulla") e dal Controller (per l'esito).
      */
     public abstract boolean isAnnullabile();
+
+    /*
+     * Evento "annulla" del pattern State: la Prenotazione (Context) delega allo
+     * stato corrente. Ogni stato concreto decide la transizione — Prenotata passa
+     * ad Annullata (porta.setStato(new Annullata())), Annullata è un no-op
+     * ("nessuna transizione prevista"). Mirroring dell'esempio Porta/StatoPorta.
+     */
+    public abstract void annulla(Prenotazione prenotazione);
 
     /*
      * Nome leggibile dello stato (per la GUI).
      */
     public abstract String nome();
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "{id=" + id + '}';
+        return getClass().getSimpleName();
     }
 }

@@ -1,7 +1,6 @@
 package entity;
 
 import database.GestorePersistenza;
-import entity.notifica.ServizioNotifica;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,28 +18,14 @@ import java.util.Map;
  * ombrelloni e del residuo dei servizi, la creazione delle prenotazioni e il
  * controllo dei conflitti (estensioni 2.a e 3.1.a del flusso Effettua Prenotazione).
  *
- * Pattern Observer: è il Subject del ciclo di vita della prenotazione. Dopo aver
- * salvato una prenotazione, notifica gli osservatori registrati (i ServizioNotifica).
- * Gli osservatori sono tenuti in una collezione statica perché i Registro sono
- * creati a ogni chiamata; la registrazione avviene una sola volta nel composition
- * root (setup.Main), così tutte le istanze condividono gli stessi osservatori.
+ * Crea/aggiorna le prenotazioni e ne esegue la transizione di stato; la notifica
+ * del Servizio di Notifica (Observer) NON avviene qui: è il GestoreStabilimento
+ * (Controller, Subject) a notificare dopo aver ricevuto la Prenotazione restituita
+ * da questi metodi, così l'interazione col sistema esterno resta nel Boundary.
  *
  * Usa GestorePersistenza (livello Database), come gli altri Registro.
  */
 public class RegistroPrenotazioni {
-
-    // Osservatori del Subject (Observer pattern), condivisi tra le istanze.
-    private static final List<ServizioNotifica> osservatori = new ArrayList<>();
-
-    /*
-     * Registra un osservatore del ciclo di vita delle prenotazioni. Invocato dal
-     * composition root all'avvio (setup.Main).
-     */
-    public static void aggiungiOsservatore(ServizioNotifica osservatore) {
-        if (osservatore != null && !osservatori.contains(osservatore)) {
-            osservatori.add(osservatore);
-        }
-    }
 
     private GestorePersistenza gestorePersistenza;
 
@@ -54,20 +39,19 @@ public class RegistroPrenotazioni {
      * La disponibilità è quindi un dato derivato, non memorizzato sull'ombrellone.
      */
     public boolean isOmbrelloneOccupato(Ombrellone ombrellone, LocalDate data) {
-        StatoPrenotazione prenotata = statoPrenotata();
-
-        if (prenotata == null) {
-            // Nessuno stato "Prenotata" registrato: non esistono prenotazioni attive.
-            return false;
-        }
-
-        // Si usa una mappa ordinata per costruire i criteri della ricerca.
+        // Si cerca per ombrellone e data; l'attività si valuta sullo stato (pattern
+        // State), in Java: gli stati sono ora istanze per-prenotazione, quindi non
+        // si può filtrare per una riga-stato condivisa.
         Map<String, Object> criteri = new LinkedHashMap<>();
         criteri.put("ombrellone", ombrellone);
         criteri.put("data", data);
-        criteri.put("stato", prenotata);
 
-        return gestorePersistenza.cercaPrimoPerCampi(Prenotazione.class, criteri) != null;
+        for (Prenotazione p : gestorePersistenza.cercaPerCampi(Prenotazione.class, criteri)) {
+            if (p.getStato() != null && p.getStato().isAttiva()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /*
@@ -77,14 +61,12 @@ public class RegistroPrenotazioni {
      * finché esistono prenotazioni che riferiscono ombrelloni e servizi.
      */
     public boolean esistonoPrenotazioniAttive() {
-        StatoPrenotazione prenotata = statoPrenotata();
-
-        if (prenotata == null) {
-            return false;
+        for (Prenotazione p : gestorePersistenza.cercaPerCampi(Prenotazione.class, Map.of())) {
+            if (p.getStato() != null && p.getStato().isAttiva()) {
+                return true;
+            }
         }
-
-        return gestorePersistenza.cercaPrimoPerCampi(
-                Prenotazione.class, Map.of("stato", prenotata)) != null;
+        return false;
     }
 
     /*
@@ -123,46 +105,62 @@ public class RegistroPrenotazioni {
     }
 
     /*
-     * «Creator» + controllo dei conflitti: crea e salva una prenotazione in stato
-     * Prenotata, dopo aver verificato disponibilità dell'ombrellone (estensione
-     * 2.a) e residuo dei servizi (estensione 3.1.a). Notifica poi gli osservatori
-     * (Observer). Lancia eccezioni di dominio se i controlli falliscono.
+     * Information Expert: il primo servizio la cui quantità richiesta supera il
+     * residuo disponibile per la data (null se tutti hanno residuo sufficiente).
+     * Espone il controllo di conflitto sui servizi (estensione 3.1.a) come query,
+     * così il Controller decide l'esito senza affidarsi a eccezioni di controllo.
+     */
+    public ServizioAggiuntivo servizioEsaurito(Map<ServizioAggiuntivo, Integer> quantitaServizi,
+                                               LocalDate data) {
+        if (quantitaServizi == null) {
+            return null;
+        }
+        for (Map.Entry<ServizioAggiuntivo, Integer> voce : quantitaServizi.entrySet()) {
+            int richiesta = (voce.getValue() != null) ? voce.getValue() : 0;
+            if (richiesta > 0 && residuoServizio(voce.getKey(), data) < richiesta) {
+                return voce.getKey();
+            }
+        }
+        return null;
+    }
+
+    /*
+     * «Creator»: crea e salva una prenotazione nello stato Prenotata. I controlli
+     * di conflitto (disponibilità ombrellone, residuo servizi) sono esposti come
+     * query — isOmbrelloneOccupato, servizioEsaurito — e verificati a monte dal
+     * Controller, che ne mappa l'esito in un codice: questo metodo non lancia più
+     * eccezioni di dominio. Restituisce la prenotazione creata (null se il
+     * salvataggio fallisce); la notifica è innescata dal Boundary alla conferma.
      */
     public Prenotazione effettuaPrenotazione(Cliente cliente, Ombrellone ombrellone,
                                              LocalDate data,
                                              Map<ServizioAggiuntivo, Integer> quantitaServizi,
                                              double prezzoTotale) {
 
-        if (isOmbrelloneOccupato(ombrellone, data)) {
-            throw new OmbrelloneNonDisponibileException(
-                    "Ombrellone non disponibile per la data selezionata.");
-        }
-
         Map<ServizioAggiuntivo, Integer> serviziScelti =
                 (quantitaServizi != null) ? quantitaServizi : new LinkedHashMap<>();
 
-        // La quantità richiesta di ogni servizio non deve superare il residuo.
-        for (Map.Entry<ServizioAggiuntivo, Integer> voce : serviziScelti.entrySet()) {
-            int richiesta = (voce.getValue() != null) ? voce.getValue() : 0;
-            if (richiesta > 0 && residuoServizio(voce.getKey(), data) < richiesta) {
-                throw new ServizioEsauritoException(voce.getKey());
-            }
-        }
-
-        // Transizione di State: la prenotazione nasce nello stato Prenotata.
-        // Il prezzo totale è "congelato" qui, alle tariffe vigenti.
+        // Pattern State: la prenotazione nasce nello stato Prenotata (istanza nuova,
+        // posseduta dalla prenotazione). Il prezzo totale è "congelato" qui, alle
+        // tariffe vigenti.
         Prenotazione prenotazione = new Prenotazione(
-                data, ombrellone, statoPrenotata(),
+                data, ombrellone, new Prenotata(),
                 cliente, new LinkedHashMap<>(serviziScelti), LocalDateTime.now(), prezzoTotale);
 
         if (!gestorePersistenza.salva(prenotazione)) {
             return null;
         }
 
-        // Observer: notifica il Servizio di Notifica (passo 6 del flusso).
-        notifica(prenotazione);
-
         return prenotazione;
+    }
+
+    /*
+     * Information Expert: cerca una prenotazione per id (null se inesistente).
+     * Esposto perché il Controller risolva le entità tramite il Registro (livello
+     * Entity), senza accedere direttamente al livello Database.
+     */
+    public Prenotazione trovaPrenotazione(long id) {
+        return gestorePersistenza.trovaPerId(Prenotazione.class, id);
     }
 
     /*
@@ -177,72 +175,32 @@ public class RegistroPrenotazioni {
     /*
      * Annulla una prenotazione (caso d'uso Gestione prenotazioni personali,
      * «include» Annullamento prenotazione): esegue la transizione di stato verso
-     * Annullata, rende persistente la modifica e notifica gli osservatori (passo
-     * 3.3 del flusso). La verifica del limite temporale è a carico del Controller
-     * (Prenotazione.isAnnullabile), come per gli altri controlli di flusso.
+     * Annullata e rende persistente la modifica. La notifica dell'annullamento
+     * (Observer) è a carico del Controller, che la emette dopo aver ricevuto la
+     * Prenotazione qui restituita. La verifica del limite temporale è a carico del
+     * Controller (Prenotazione.isAnnullabile), come per gli altri controlli di flusso.
      */
     public Prenotazione annullaPrenotazione(Prenotazione prenotazione) {
-        // Transizione di State: Prenotata -> Annullata.
-        prenotazione.annulla(statoAnnullata());
+        // Pattern State: il Context delega allo stato corrente la transizione
+        // Prenotata -> Annullata (Annullata sarebbe un no-op).
+        prenotazione.annulla();
 
-        Prenotazione aggiornata = gestorePersistenza.aggiorna(prenotazione);
-
-        // Observer: notifica il Servizio di Notifica dell'annullamento.
-        notificaAnnullamento(aggiornata);
-
-        return aggiornata;
+        return gestorePersistenza.aggiorna(prenotazione);
     }
 
     /*
-     * Notifica tutti gli osservatori registrati che una prenotazione è stata
-     * effettuata.
-     */
-    private void notifica(Prenotazione prenotazione) {
-        for (ServizioNotifica osservatore : osservatori) {
-            osservatore.prenotazioneEffettuata(prenotazione);
-        }
-    }
-
-    /*
-     * Notifica tutti gli osservatori registrati che una prenotazione è stata
-     * annullata.
-     */
-    private void notificaAnnullamento(Prenotazione prenotazione) {
-        for (ServizioNotifica osservatore : osservatori) {
-            osservatore.prenotazioneAnnullata(prenotazione);
-        }
-    }
-
-    /*
-     * Prenotazioni attive (stato Prenotata) per una certa data.
+     * Prenotazioni attive (stato attivo) per una certa data: si cerca per data e si
+     * filtra in Java sullo stato (pattern State, istanze per-prenotazione).
      */
     private List<Prenotazione> prenotazioniAttive(LocalDate data) {
-        StatoPrenotazione prenotata = statoPrenotata();
+        List<Prenotazione> attive = new ArrayList<>();
 
-        if (prenotata == null) {
-            return new ArrayList<>();
+        for (Prenotazione p : gestorePersistenza.cercaPerCampo(Prenotazione.class, "data", data)) {
+            if (p.getStato() != null && p.getStato().isAttiva()) {
+                attive.add(p);
+            }
         }
 
-        Map<String, Object> criteri = new LinkedHashMap<>();
-        criteri.put("data", data);
-        criteri.put("stato", prenotata);
-
-        return gestorePersistenza.cercaPerCampi(Prenotazione.class, criteri);
-    }
-
-    /*
-     * Restituisce lo stato "Prenotata" predisposto all'avvio (riga singleton),
-     * oppure null se non presente.
-     */
-    private StatoPrenotazione statoPrenotata() {
-        return gestorePersistenza.cercaPrimoPerCampi(Prenotata.class, Map.of());
-    }
-
-    /*
-     * Restituisce lo stato "Annullata" predisposto all'avvio (riga singleton),
-     * oppure null se non presente.
-     */
-    private StatoPrenotazione statoAnnullata() {
-        return gestorePersistenza.cercaPrimoPerCampi(Annullata.class, Map.of());
+        return attive;
     }
 }

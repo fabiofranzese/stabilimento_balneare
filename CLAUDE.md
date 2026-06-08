@@ -19,14 +19,14 @@
 
 Four layers with one-way dependencies only:
 
-- **Boundary (B)** — `…boundary`: user interaction via **Swing** (`JFrame`/forms, IntelliJ GUI Designer `.form` files). One boundary per actor/use-case interaction. **No** business logic, **no** persistence. Calls Control only.
-- **Control (C)** — `…controller`: use-case controllers (GRASP **Controller**). Orchestrate one scenario, coordinate Entities, and drive persistence through `Registro…`/`GestorePersistenza`. **Façade** lives here (mirrors the reference's `ControllerRimessaggio`). Calls Entity + Database.
+- **Boundary (B)** — `…boundary`: interaction with external actors and systems. Mainly user interaction via **Swing** (`JFrame`/forms, IntelliJ GUI Designer `.form` files), one boundary per actor/use-case interaction; **also** outbound interaction with external systems — e.g. the notification Adapter (`boundary/notifica`), which the forms invoke **on confirmation** of a reservation/cancellation to talk to the external channel (COTS in package `notifica`). **No** business logic, **no** persistence. Depends on Control only (it may also use an external/COTS component).
+- **Control (C)** — `…controller`: use-case controllers (GRASP **Controller**). Orchestrate one scenario, coordinate Entities, and drive persistence **through the `Registro…` services only**. **Façade** lives here (mirrors the reference's `ControllerRimessaggio`). **Calls Entity only** — it must **not** touch the Database layer (`GestorePersistenza`/`EntityManager`) directly; entity look-ups by id go through a `Registro` finder.
 - **Entity (E)** — `…entity`: the domain model from the domain/GRASP class diagrams (GRASP **Information Expert / Creator**). Holds business rules. **State** lives here. Pure domain — depends on nothing outward.
-- **Database (D)** — `…database`: a single **generic `GestorePersistenza`** (CRUD + finders over any entity) + **`JpaUtil`** (Singleton). Wraps `EntityManager` and owns transactions internally. Depends on Entity only; returns Entities, never leaks `EntityManager` upward.
+- **Database (D)** — `…database`: a single **generic `GestorePersistenza`** (CRUD + finders over any entity) + **`JpaUtil`** (Singleton). Wraps `EntityManager` and owns transactions internally. It is **fully generic** (works over `Class<T>`/`T`, imports no `entity` class), so it depends on nothing outward; it is the **`Registro…` services (Entity) that depend on it** (`entity → database`, i.e. **E→D**). Returns Entities, never leaks `EntityManager` upward.
 
 > **`Registro…` domain-service classes** (analogues of the reference's `RegistroRimessaggio`/`RegistroPosti`) wrap `GestorePersistenza` with domain logic and are what Controllers call to persist/look up aggregates — there is **no per-aggregate DAO**. Following the reference (and the «Information Expert» stereotype on the GRASP diagrams), a `Registro` lives in the **`entity`** package; this means it has an `entity → database` dependency — an accepted bend of strict BCED that the reference itself uses.
 
-**Dependency rule:** `B → C → {E, D}` and `D → E`. Never upward. Entities never import B/C/D. Cross-cutting notification crosses outward only through an **interface owned by Entity** (dependency inversion) — see Observer/Adapter below.
+**Dependency rule:** strictly linear **`B → C → E → D`** — **no layer-skipping**. In particular the Controller never reaches the Database directly (no `C → D`): it goes through `Registro…` (E), which call `GestorePersistenza` (D). Never upward. Entities never import B/C/D. **Interaction with external systems is managed in the Boundary**: when a form receives the success outcome from the Controller, it asks the Controller for a primitive `DatiNotifica` and invokes the **Adapter** in `boundary/notifica`, which talks to the external channel (`CanaleComunicazioneEsterno`, COTS in package `notifica`). No Observer/Subject: the Controller does not call the Boundary. The external channel sits outside the BCED chain; the Boundary mediating with it is not a layer-skip.
 
 ### Package layout
 
@@ -40,7 +40,7 @@ src/main/java/
 └── setup/                    # DB init/seeding + Main (entry point: setup.Main)
 src/main/resources/META-INF/persistence.xml
 ```
-Sub-packages and new layers are added per use case when needed, e.g. `entity/stabilimento` (layout: `FilaOmbrelloni ◆— Ombrellone`, position via `TipoFila`), `entity/stato` (State for `Prenotazione`), `entity/notifica` (Observer + `ServizioNotifica` interface), and an `infrastructure/notifica` for the Adapter — **none of these exist yet**; create them when their use case is implemented.
+Sub-packages and new layers are added per use case when needed, e.g. `entity/stabilimento` (layout: `FilaOmbrelloni ◆— Ombrellone`, position via `TipoFila`), `entity/stato` (State for `Prenotazione`), `controller/notifica` (`DatiNotifica` primitive payload built by Control), `boundary/notifica` (`AdapterServizioNotifica`, invoked by the forms on confirmation), and `notifica` (the external channel `CanaleComunicazioneEsterno`, COTS).
 
 `Registro…` domain-service classes live in **`entity/`** (reference idiom + «Information Expert») — see the BCED note above.
 
@@ -52,13 +52,12 @@ Use these patterns **only** at the locations below. Don't scatter extra patterns
 |---|---|---|---|
 | **Singleton** | Creational | Database | `JpaUtil` — single `EntityManagerFactory` from a named persistence unit, `getEntityManager()` per call, `chiudi()` to close; mirror the reference's `JpaUtil` exactly (note the casing) |
 | **Façade** | Structural | Control | Use-case controllers (`controller/`) expose coarse-grained operations to Boundary, orchestrating `Registro…` services + Entities (mirrors `ControllerRimessaggio`) |
-| **Adapter** | Structural | Infrastructure | `ServizioNotifica` target interface (owned by Entity); concrete `…Adapter` wraps the external notification channel (email/SMS/console). **No precedent in the reference — design it ourselves** |
-| **Observer** | Behavioral | Entity ↔ Infra | Reservation (`Prenotazione`) lifecycle is the **Subject**; `ServizioNotifica` (via its Adapter) is an **Observer**. Notifies on *Effettua Prenotazione* / *Gestione prenotazioni personali*. **No precedent in the reference — design it ourselves** |
-| **State** | Behavioral | Entity | `Prenotazione` lifecycle: `StatoPrenotazione` ← `Prenotata` / `Annullata`. Drives reservation transitions and the storico. |
+| **Adapter** | Structural | Boundary | `AdapterServizioNotifica` (`boundary/notifica`) adapts the external notification channel (`CanaleComunicazioneEsterno`, COTS in package `notifica`) to the app's message (`DatiNotifica`, primitive payload built by Control). The **Boundary invokes it on confirmation** of a reservation/cancellation — no Observer/Subject. **No precedent in the reference — design it ourselves** |
+| **State** | Behavioral | Entity | `Prenotazione` (Context) lifecycle: `StatoPrenotazione` ← `Prenotata` / `Annullata`. **Canonical GoF State** (like the professor's `Porta`/`StatoPorta`): `Prenotazione.annulla()` delegates to `stato.annulla(this)`; each state **owns the transition** (`Prenotata` → `new Annullata()` via `setStato`), invalid events are **no-op** (`Annullata`). States are **per-reservation `new` instances** (not seeded singletons); availability is a *derived* query filtering on `stato.isAttiva()`. |
 
-**State host is `Prenotazione`** (`StatoPrenotazione` → `Prenotata`/`Annullata`), per the authoritative domain model under `docs/diagrams/class/`. Ombrellone availability is **not** a State machine on the spot: it is a *derived* per-date query over active reservations.
+**State host is `Prenotazione`** (`StatoPrenotazione` → `Prenotata`/`Annullata`), per the authoritative domain model under `docs/diagrams/class/`. The pattern is realised in the **canonical (delegating) form**: the Context (`Prenotazione`) delegates the event to the current state, the state performs the transition by constructing its successor (`new`) and calling `setStato`, and invalid events are no-ops. Ombrellone availability is **not** a State machine on the spot: it is a *derived* per-date query over active reservations.
 
-**No Composite pattern.** The authoritative domain model realises the establishment layout as plain composition `RegistroOmbrelloni ◇— FilaOmbrelloni ◆— Ombrellone` (position via the `TipoFila` hierarchy) — there is no `Stabilimento` root and no shared component supertype, so the GoF Composite is **not** used. Five required patterns remain: Singleton, Façade, Adapter, Observer, State.
+**No Composite pattern.** The authoritative domain model realises the establishment layout as plain composition `RegistroOmbrelloni ◇— FilaOmbrelloni ◆— Ombrellone` (position via the `TipoFila` hierarchy) — there is no `Stabilimento` root and no shared component supertype, so the GoF Composite is **not** used. **Observer is no longer used** (the notification is triggered by the Boundary on confirmation, not via a Subject). Four required patterns remain: **Singleton, Façade, Adapter, State**.
 
 ## Use cases in scope
 
@@ -67,7 +66,7 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
 1. **Registrazione / Accesso al sistema** — *UtenteNonAutenticato* registers, then authenticates into a `Cliente` or `Gestore`.
 2. **Configurazione stabilimento** — *GestoreAutenticato* builds the establishment layout: `RegistroOmbrelloni ◇— FilaOmbrelloni ◆— Ombrellone`, with position via the `TipoFila` hierarchy (no Composite).
 3. **Definizione Tariffe** — *GestoreAutenticato* defines `Tariffa` (per period / spot type).
-4. **Visualizzazione Mappa → Effettua Prenotazione** — *ClienteAutenticato* views the layout map; *Effettua Prenotazione* **«extend»s** *Visualizzazione Mappa* at extension point **"Prenotazione postazioni"**, then triggers **Observer** notification via *Servizio di Notifica*.
+4. **Visualizzazione Mappa → Effettua Prenotazione** — *ClienteAutenticato* views the layout map; *Effettua Prenotazione* **«extend»s** *Visualizzazione Mappa* at extension point **"Prenotazione postazioni"**; on confirmation the **Boundary notifies** the *Servizio di Notifica* (via the Adapter).
 
 **Model the «extend» correctly:** the map view offers a "prenota" action that invokes the reservation flow. Reservation is the optional/triggered extension, **not** part of base map viewing.
 
@@ -87,10 +86,10 @@ Implement **in this order, one at a time**, stopping for review between each. Ac
   - **JavaBean accessor prefixes `get` / `set` / `is` stay in English** (e.g. `getCliente()`, `setDataInizio()`, `isAttiva()`) — the noun stays Italian, only the prefix is English. This keeps JPA/Hibernate property-access mapping working.
 - One public class per file; the package equals its BCED layer.
 - Business rules and validation live in **Entity** (Information Expert) — never in Boundary.
-- **Persistence:** the generic `GestorePersistenza` owns all `EntityManager` access and runs transactions (begin/commit/rollback) **inside** its own methods; it returns Entities and never exposes `EntityManager` upward. `Registro…` services add domain logic on top; Controllers call `Registro`/`GestorePersistenza` and never touch `EntityManager` directly.
+- **Persistence:** the generic `GestorePersistenza` owns all `EntityManager` access and runs transactions (begin/commit/rollback) **inside** its own methods; it returns Entities and never exposes `EntityManager` upward. `Registro…` services add domain logic on top; **Controllers call the `Registro` services only — never `GestorePersistenza` or `EntityManager` directly** (entity look-ups by id use a `Registro` finder, e.g. `trovaOmbrellone`/`trovaServizio`/`trovaPrenotazione`).
 - **Entity mapping (per reference):** Jakarta annotations with **field access**; `@Id @GeneratedValue(strategy = GenerationType.IDENTITY)`; `@Enumerated(EnumType.STRING)` for enums; relationships via `@OneToMany(mappedBy = …)` / `@ManyToOne @JoinColumn` / `@OneToOne @JoinColumn`. Provide getters/setters.
 - **No logging framework** — rely on `hibernate.show_sql`/`format_sql` for SQL visibility. Utility/seed classes use a private constructor to prevent instantiation.
-- The notification interface is **owned by Entity**; the Adapter (infrastructure) implements it. This keeps Entity dependency-free.
+- The notification is **triggered by the Boundary on confirmation**: on a success outcome the form asks the Controller for a primitive `DatiNotifica` (`controller.notifica`, no Entity in the payload) and calls the **Adapter** in `boundary/notifica`, which talks to the external channel (`CanaleComunicazioneEsterno`, COTS in package `notifica`). No Observer/Subject. This keeps the chain strictly `B → C → E → D` (the Controller never imports the Boundary).
 
 ## Workflow (per use case)
 
@@ -134,7 +133,7 @@ plugin is added.
 ## Guardrails
 
 - Respect the BCED dependency direction — **no upward imports, ever.**
-- Don't add patterns beyond the five listed (Singleton, Façade, Adapter, Observer, State), and don't skip a required one.
+- Don't add patterns beyond the four listed (Singleton, Façade, Adapter, State), and don't skip a required one.
 - Don't invent requirements absent from the spec/flows — flag the gap and ask.
 - Treat everything under `docs/` (diagrams, flussi, reference-project) as **read-only**.
 - For new **domain** classes not on the domain/GRASP diagrams: **ask first.** New *infrastructure* plumbing (`Registro` services, adapters, Swing forms) is fine.

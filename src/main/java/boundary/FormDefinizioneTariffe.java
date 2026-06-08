@@ -17,8 +17,11 @@ import java.util.List;
  * del costruttore.
  *
  * Il gestore sceglie un elemento (un tipo di ombrellone o un servizio
- * aggiuntivo), una stagione e un costo, e li aggiunge a un elenco; alla conferma
- * l'elenco viene inviato al Controller, che imposta o aggiorna ciascun prezzo.
+ * aggiuntivo), una stagione e un costo, e li aggiunge a un elenco; può anche
+ * rimuovere voci dall'elenco. Alla conferma l'elenco viene inviato al Controller,
+ * che lo tratta come stato desiderato completo: imposta o aggiorna i prezzi
+ * presenti ed elimina le tariffe non più nell'elenco. Sia le modifiche sia le
+ * rimozioni si applicano dunque solo al salvataggio.
  * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
  * GestoreStabilimento e scambia solo tipi primitivi/array.
  */
@@ -119,6 +122,10 @@ public class FormDefinizioneTariffe {
         aggiornaListaTariffe();
     }
 
+    /*
+     * Toglie la tariffa selezionata dall'elenco in memoria. L'eliminazione dal
+     * database avviene al salvataggio (riconciliazione lato Controller).
+     */
     private void rimuoviTariffa() {
         int selezione = listaTariffe.getSelectedIndex();
         if (selezione < 0) {

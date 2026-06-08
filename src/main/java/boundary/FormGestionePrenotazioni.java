@@ -1,6 +1,8 @@
 package boundary;
 
+import boundary.notifica.AdapterServizioNotifica;
 import controller.GestoreStabilimento;
+import notifica.CanaleComunicazioneEsterno;
 
 import javax.swing.*;
 import java.awt.Color;
@@ -62,6 +64,11 @@ public class FormGestionePrenotazioni {
     private double[] prezzi = new double[0];
     private long[] idPrenotazioni = new long[0];
     private boolean[] annullabili = new boolean[0];
+
+    // Adapter verso il sistema esterno di notifica: il Boundary effettua la chiamata
+    // al canale alla conferma dell'annullamento (niente più Observer).
+    private final AdapterServizioNotifica notificatore =
+            new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 
     public FormGestionePrenotazioni(JFrame finestraChiamante, String emailCliente) {
         this.finestraChiamante = finestraChiamante;
@@ -200,15 +207,24 @@ public class FormGestionePrenotazioni {
             return;
         }
 
-        int esito = GestoreStabilimento.annullaPrenotazione(emailCliente, idPrenotazioni[selezione]);
+        long idAnnullata = idPrenotazioni[selezione];
+        int esito = GestoreStabilimento.annullaPrenotazione(emailCliente, idAnnullata);
 
         switch (esito) {
-            case GestoreStabilimento.ANNULLAMENTO_OK:
+            case GestoreStabilimento.ANNULLAMENTO_OK: {
+                // Ricevuta la conferma, il Boundary innesca la notifica al sistema
+                // esterno: chiede al Controller il testo del messaggio e lo invia
+                // al destinatario (l'email del cliente autenticato) tramite l'Adapter.
+                String corpoNotifica = GestoreStabilimento.messaggioNotificaAnnullamento(emailCliente, idAnnullata);
+                if (corpoNotifica != null) {
+                    notificatore.prenotazioneAnnullata(emailCliente, corpoNotifica);
+                }
                 JOptionPane.showMessageDialog(frame,
                         "Prenotazione annullata. Riceverai una notifica di conferma.",
                         "Annullamento effettuato", JOptionPane.INFORMATION_MESSAGE);
                 caricaPrenotazioni();
                 break;
+            }
 
             case GestoreStabilimento.LIMITE_TEMPORALE_SUPERATO:
                 // Estensione 3.2.a: oltre il limite temporale.

@@ -37,6 +37,15 @@ public class RegistroServiziAggiuntivi {
     }
 
     /*
+     * Information Expert: cerca un servizio aggiuntivo per id (null se inesistente).
+     * Esposto perché il Controller risolva le entità tramite il Registro (livello
+     * Entity), senza accedere direttamente al livello Database.
+     */
+    public ServizioAggiuntivo trovaServizio(long id) {
+        return gestorePersistenza.trovaPerId(ServizioAggiuntivo.class, id);
+    }
+
+    /*
      * Information Expert: restituisce tutti i servizi aggiuntivi.
      */
     public List<ServizioAggiuntivo> getServizi() {

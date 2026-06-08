@@ -61,6 +61,17 @@ public class RegistroTariffe {
     }
 
     /*
+     * Elimina la tariffa indicata (per id). Usata dalla riconciliazione del
+     * salvataggio per cancellare le tariffe rimosse dal gestore.
+     */
+    public void elimina(Tariffa tariffa) {
+        if (tariffa != null && tariffa.getId() != null) {
+            // Tariffa.class basta anche per le sottoclassi (mappatura SINGLE_TABLE).
+            gestorePersistenza.elimina(Tariffa.class, tariffa.getId());
+        }
+    }
+
+    /*
      * Information Expert: tutte le tariffe dei tipi di fila.
      */
     public List<TariffaTipoFila> getTariffeTipoFila() {

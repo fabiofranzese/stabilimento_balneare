@@ -40,6 +40,10 @@ build/
 # Contiene credenziali locali; usare persistence.xml.template come riferimento.
 src/main/resources/META-INF/persistence.xml
 
+### Email / SMTP credentials ###
+# Contiene le credenziali SMTP (Brevo); usare email.properties.template come riferimento.
+src/main/resources/email.properties
+
 ### References ###
 docs/
 ### Mac OS ###

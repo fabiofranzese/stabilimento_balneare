@@ -59,6 +59,15 @@ public class RegistroOmbrelloni {
     }
 
     /*
+     * Information Expert: cerca un ombrellone per id (null se inesistente). Esposto
+     * perché il Controller risolva le entità tramite il Registro (livello Entity),
+     * senza accedere direttamente al livello Database.
+     */
+    public Ombrellone trovaOmbrellone(long id) {
+        return gestorePersistenza.trovaPerId(Ombrellone.class, id);
+    }
+
+    /*
      * Information Expert: restituisce tutte le file, ordinate per numero.
      */
     public List<FilaOmbrelloni> getFile() {

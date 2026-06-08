@@ -1,10 +1,8 @@
 package controller;
 
-import database.GestorePersistenza;
 import entity.Cliente;
 import entity.FilaOmbrelloni;
 import entity.Ombrellone;
-import entity.OmbrelloneNonDisponibileException;
 import entity.Prenotazione;
 import entity.RegistroOmbrelloni;
 import entity.RegistroPrenotazioni;
@@ -12,7 +10,6 @@ import entity.RegistroServiziAggiuntivi;
 import entity.RegistroTariffe;
 import entity.RegistroUtenti;
 import entity.ServizioAggiuntivo;
-import entity.ServizioEsauritoException;
 import entity.Stagione;
 import entity.StatoPrenotazione;
 import entity.TariffaServizioAggiuntivo;
@@ -23,9 +20,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /*
  * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso del
@@ -263,10 +262,13 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Caso d'uso Definizione tariffe.
+     * Caso d'uso Definizione tariffe (con eliminazione, "reconcile-on-save").
      *
-     * Per ogni tariffa indicata (elemento + stagione + costo) imposta o aggiorna
-     * il prezzo (strategia "upsert" nel RegistroTariffe). Gli array sono paralleli.
+     * La lista inviata è lo stato desiderato completo: per ogni tariffa indicata
+     * (elemento + stagione + costo) imposta o aggiorna il prezzo (strategia
+     * "upsert" nel RegistroTariffe), e in più elimina dal database le tariffe non
+     * più presenti nella lista (rimosse dal gestore nel form). Una lista vuota è
+     * valida e significa "elimina tutte le tariffe". Gli array sono paralleli.
      */
     public static int salvaTariffe(int[] elementiIndici, int[] stagioniIndici, double[] costi) {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -281,6 +283,16 @@ public class GestoreStabilimento {
             RegistroTariffe registroTariffe = new RegistroTariffe();
             Stagione[] stagioni = Stagione.values();
 
+            // Chiavi (elemento + stagione) inviate dal gestore: lo stato desiderato.
+            Set<String> chiaviInviate = new HashSet<>();
+            for (int i = 0; i < elementiIndici.length; i++) {
+                chiaviInviate.add(chiaveTariffa(elementiIndici[i], stagioniIndici[i]));
+            }
+
+            // Elimina dal DB le tariffe non più presenti nella lista inviata.
+            eliminaTariffeNonInviate(registroTariffe, tipi, servizi, numTipi, chiaviInviate);
+
+            // Imposta o aggiorna le tariffe inviate.
             for (int i = 0; i < elementiIndici.length; i++) {
                 int elemento = elementiIndici[i];
                 Stagione stagione = stagioni[stagioniIndici[i]];
@@ -299,6 +311,45 @@ public class GestoreStabilimento {
             e.printStackTrace();
             return ERRORE_TARIFFE;
         }
+    }
+
+    /*
+     * Elimina le tariffe presenti nel database ma non nell'insieme inviato dal
+     * gestore (chiavi elemento+stagione).
+     *
+     * NOTE: la riconciliazione è limitata agli elementi *visibili* nel form (tipi
+     * di fila configurati + servizi esistenti). Una tariffa relativa a un tipo/
+     * servizio non più presente (indice -1) non compare nell'elenco e quindi non
+     * può essere stata rimossa dal gestore: viene preservata in archivio (e
+     * riutilizzata se quell'elemento torna disponibile), non eliminata.
+     */
+    private static void eliminaTariffeNonInviate(RegistroTariffe registroTariffe,
+                                                 List<TipoFila> tipi, List<ServizioAggiuntivo> servizi,
+                                                 int numTipi, Set<String> chiaviInviate) {
+
+        for (TariffaTipoFila tariffa : registroTariffe.getTariffeTipoFila()) {
+            int elemento = tipi.indexOf(tariffa.getTipoFila());
+            if (elemento >= 0
+                    && !chiaviInviate.contains(chiaveTariffa(elemento, tariffa.getStagione().ordinal()))) {
+                registroTariffe.elimina(tariffa);
+            }
+        }
+
+        for (TariffaServizioAggiuntivo tariffa : registroTariffe.getTariffeServizio()) {
+            int posizione = indiceServizio(servizi, tariffa.getServizio());
+            if (posizione >= 0
+                    && !chiaviInviate.contains(chiaveTariffa(numTipi + posizione, tariffa.getStagione().ordinal()))) {
+                registroTariffe.elimina(tariffa);
+            }
+        }
+    }
+
+    /*
+     * Chiave univoca di una tariffa per la riconciliazione: indice dell'elemento
+     * (tipo di fila o servizio) e ordinale della stagione.
+     */
+    private static String chiaveTariffa(int elemento, int stagioneOrdinale) {
+        return elemento + ":" + stagioneOrdinale;
     }
 
     // --- Lettura delle tariffe correnti (per precaricare il form) ---
@@ -338,9 +389,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Validazione delle tariffe: array coerenti in lunghezza e non vuoti, ogni
-     * indice valido, e ogni costo strettamente positivo (flusso: tariffa <= 0
-     * è un errore).
+     * Validazione delle tariffe: array coerenti in lunghezza, ogni indice valido,
+     * e ogni costo strettamente positivo (flusso: tariffa <= 0 è un errore). Una
+     * lista vuota è valida: significa "elimina tutte le tariffe".
      */
     private static boolean datiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
                                              double[] costi, int numeroElementi) {
@@ -349,8 +400,7 @@ public class GestoreStabilimento {
             return false;
         }
 
-        if (elementiIndici.length == 0
-                || elementiIndici.length != stagioniIndici.length
+        if (elementiIndici.length != stagioniIndici.length
                 || elementiIndici.length != costi.length) {
             return false;
         }
@@ -676,7 +726,7 @@ public class GestoreStabilimento {
      * cui cade la data; -1 se la tariffa non è definita o l'ombrellone non esiste.
      */
     public static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
-        Ombrellone ombrellone = new GestorePersistenza().trovaPerId(Ombrellone.class, idOmbrellone);
+        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
 
         if (ombrellone == null || ombrellone.getFila() == null) {
             return -1;
@@ -703,7 +753,7 @@ public class GestoreStabilimento {
                     continue;
                 }
                 ServizioAggiuntivo servizio =
-                        new GestorePersistenza().trovaPerId(ServizioAggiuntivo.class, idServiziScelti[i]);
+                        new RegistroServiziAggiuntivi().trovaServizio(idServiziScelti[i]);
                 if (servizio != null) {
                     totale += Math.max(0, costoServizio(servizio, stagione)) * quantita[i];
                 }
@@ -717,10 +767,12 @@ public class GestoreStabilimento {
      * Caso d'uso Effettua Prenotazione.
      *
      * Risolve cliente (per email) e ombrellone (per id) e costruisce la mappa
-     * servizio→quantità (solo le quantità positive), poi delega al
-     * RegistroPrenotazioni la creazione con controllo dei conflitti. Traduce le
-     * eccezioni di dominio nei codici di esito per il Boundary. Gli array
-     * idServiziScelti e quantita sono paralleli.
+     * servizio→quantità (solo le quantità positive). Verifica i conflitti
+     * interrogando il RegistroPrenotazioni (Information Expert) — disponibilità
+     * dell'ombrellone (estensione 2.a) e residuo dei servizi (estensione 3.1.a) —
+     * e ne mappa l'esito in un codice per il Boundary, poi delega la creazione al
+     * Registro. Niente eccezioni di controllo: i conflitti sono query di dominio.
+     * Gli array idServiziScelti e quantita sono paralleli.
      */
     public static int effettuaPrenotazione(String emailCliente, long idOmbrellone,
                                            LocalDate data, long[] idServiziScelti, int[] quantita) {
@@ -734,10 +786,8 @@ public class GestoreStabilimento {
             return DATI_PRENOTAZIONE_NON_VALIDI;
         }
 
-        GestorePersistenza gestorePersistenza = new GestorePersistenza();
-
         Cliente cliente = clientePerEmail(emailCliente);
-        Ombrellone ombrellone = gestorePersistenza.trovaPerId(Ombrellone.class, idOmbrellone);
+        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
 
         if (cliente == null || ombrellone == null) {
             return DATI_PRENOTAZIONE_NON_VALIDI;
@@ -750,7 +800,7 @@ public class GestoreStabilimento {
                     continue;
                 }
                 ServizioAggiuntivo servizio =
-                        gestorePersistenza.trovaPerId(ServizioAggiuntivo.class, idServiziScelti[i]);
+                        new RegistroServiziAggiuntivi().trovaServizio(idServiziScelti[i]);
                 if (servizio == null) {
                     return DATI_PRENOTAZIONE_NON_VALIDI;
                 }
@@ -761,15 +811,30 @@ public class GestoreStabilimento {
         // Prezzo "congelato" al momento della prenotazione, alle tariffe vigenti.
         double totale = prezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
 
+        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
+
+        // Controllo dei conflitti tramite le query di dominio del Registro
+        // (Information Expert), mappate nei codici di esito (niente eccezioni).
+        if (registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data)) {
+            // Estensione 2.a: ombrellone già occupato per la data scelta.
+            return OMBRELLONE_NON_DISPONIBILE;
+        }
+        if (registroPrenotazioni.servizioEsaurito(quantitaServizi, data) != null) {
+            // Estensione 3.1.a: residuo di un servizio selezionato insufficiente.
+            return SERVIZIO_ESAURITO;
+        }
+
         try {
-            new RegistroPrenotazioni()
+            Prenotazione prenotazione = registroPrenotazioni
                     .effettuaPrenotazione(cliente, ombrellone, data, quantitaServizi, totale);
+            if (prenotazione == null) {
+                return ERRORE_PRENOTAZIONE;
+            }
+
+            // La notifica è innescata dal Boundary alla conferma (vedi
+            // messaggioNotificaPrenotazione): qui si restituisce solo l'esito.
             return PRENOTAZIONE_OK;
 
-        } catch (OmbrelloneNonDisponibileException e) {
-            return OMBRELLONE_NON_DISPONIBILE;
-        } catch (ServizioEsauritoException e) {
-            return SERVIZIO_ESAURITO;
         } catch (RuntimeException e) {
             e.printStackTrace();
             return ERRORE_PRENOTAZIONE;
@@ -946,7 +1011,7 @@ public class GestoreStabilimento {
         }
 
         Prenotazione prenotazione =
-                new GestorePersistenza().trovaPerId(Prenotazione.class, idPrenotazione);
+                new RegistroPrenotazioni().trovaPrenotazione(idPrenotazione);
 
         // La prenotazione deve esistere ed essere del cliente richiedente.
         if (prenotazione == null || !appartieneA(prenotazione, cliente)) {
@@ -960,6 +1025,9 @@ public class GestoreStabilimento {
 
         try {
             new RegistroPrenotazioni().annullaPrenotazione(prenotazione);
+
+            // La notifica è innescata dal Boundary alla conferma (vedi
+            // messaggioNotificaAnnullamento): qui si restituisce solo l'esito.
             return ANNULLAMENTO_OK;
 
         } catch (RuntimeException e) {
@@ -1029,5 +1097,118 @@ public class GestoreStabilimento {
         return prenotazione.getCliente() != null
                 && prenotazione.getCliente().getId() != null
                 && prenotazione.getCliente().getId().equals(cliente.getId());
+    }
+
+    // --- Notifica (testo del messaggio per il Boundary, che innesca la chiamata al canale) ---
+
+    private static final DateTimeFormatter FORMATO_DATA_NOTIFICA =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /*
+     * Corpo (testo) della notifica di conferma, composto dagli stessi input della
+     * prenotazione appena effettuata. Il Boundary lo richiede dopo l'esito OK e lo
+     * passa, insieme al destinatario (l'email del cliente autenticato, che il
+     * Boundary già conosce), al proprio Adapter. Restituisce null se i dati non sono
+     * risolvibili (il Boundary salta la notifica). Attraversa il confine solo una
+     * String: nessuna Entity, nessun oggetto di trasferimento dedicato.
+     */
+    public static String messaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
+                                                        LocalDate data, long[] idServizi, int[] quantita) {
+        Cliente cliente = clientePerEmail(emailCliente);
+        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
+        if (cliente == null || ombrellone == null) {
+            return null;
+        }
+
+        // Mappa servizio -> quantità (solo quantità positive; i servizi non
+        // risolvibili sono semplicemente ignorati nel messaggio).
+        Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
+        if (idServizi != null && quantita != null && idServizi.length == quantita.length) {
+            for (int i = 0; i < idServizi.length; i++) {
+                if (quantita[i] <= 0) {
+                    continue;
+                }
+                ServizioAggiuntivo servizio = new RegistroServiziAggiuntivi().trovaServizio(idServizi[i]);
+                if (servizio != null) {
+                    quantitaServizi.put(servizio, quantita[i]);
+                }
+            }
+        }
+
+        double totale = prezzoTotale(idOmbrellone, idServizi, quantita, data);
+        Prenotazione prenotazione = new Prenotazione(data, ombrellone, null, cliente,
+                quantitaServizi, null, totale);
+        return componiCorpoConferma(prenotazione);
+    }
+
+    /*
+     * Corpo (testo) della notifica di annullamento per la prenotazione indicata, se
+     * appartiene al cliente. Il Boundary lo richiede dopo l'esito OK e lo passa, col
+     * destinatario, al proprio Adapter. Null se non risolvibile/non di proprietà.
+     */
+    public static String messaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
+        Cliente cliente = clientePerEmail(emailCliente);
+        if (cliente == null) {
+            return null;
+        }
+        Prenotazione prenotazione = new RegistroPrenotazioni().trovaPrenotazione(idPrenotazione);
+        if (prenotazione == null || !appartieneA(prenotazione, cliente)) {
+            return null;
+        }
+        return componiCorpoAnnullamento(prenotazione);
+    }
+
+    /*
+     * Testo della conferma: saluto, ombrellone, data, servizi inclusi e totale.
+     */
+    private static String componiCorpoConferma(Prenotazione prenotazione) {
+        StringBuilder corpo = new StringBuilder();
+        intestazione(corpo, prenotazione.getCliente());
+        corpo.append("la sua prenotazione è confermata.\n");
+        corpo.append("Ombrellone n. ").append(numeroOmbrellone(prenotazione)).append('\n');
+        if (prenotazione.getData() != null) {
+            corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA_NOTIFICA)).append('\n');
+        }
+
+        Map<ServizioAggiuntivo, Integer> quantitaServizi = prenotazione.getQuantitaServizi();
+        if (quantitaServizi != null && !quantitaServizi.isEmpty()) {
+            corpo.append("Servizi aggiuntivi:\n");
+            for (Map.Entry<ServizioAggiuntivo, Integer> voce : quantitaServizi.entrySet()) {
+                int q = voce.getValue() != null ? voce.getValue() : 0;
+                corpo.append("  - ").append(q).append(" x ")
+                        .append(voce.getKey().getDescrizione()).append('\n');
+            }
+        }
+
+        corpo.append("Totale: ").append(String.format("€ %.2f", prenotazione.getPrezzoTotale())).append('\n');
+        return corpo.toString();
+    }
+
+    /*
+     * Testo dell'annullamento: saluto, ombrellone e data.
+     */
+    private static String componiCorpoAnnullamento(Prenotazione prenotazione) {
+        StringBuilder corpo = new StringBuilder();
+        intestazione(corpo, prenotazione.getCliente());
+        corpo.append("la sua prenotazione è stata annullata.\n");
+        corpo.append("Ombrellone n. ").append(numeroOmbrellone(prenotazione)).append('\n');
+        if (prenotazione.getData() != null) {
+            corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA_NOTIFICA)).append('\n');
+        }
+        return corpo.toString();
+    }
+
+    /*
+     * Riga di saluto iniziale ("Gentile <nome cognome>,") comune ai due messaggi.
+     */
+    private static void intestazione(StringBuilder corpo, Cliente cliente) {
+        if (cliente != null && cliente.getNome() != null) {
+            corpo.append("Gentile ").append(cliente.getNome())
+                    .append(' ').append(cliente.getCognome()).append(",\n");
+        }
+    }
+
+    private static int numeroOmbrellone(Prenotazione prenotazione) {
+        return prenotazione.getOmbrellone() != null ? prenotazione.getOmbrellone().getNumero() : 0;
     }
 }
