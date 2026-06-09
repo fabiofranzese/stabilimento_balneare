@@ -21,8 +21,8 @@ public class Annullata extends StatoPrenotazione {
 
     @Override
     public void annulla(Prenotazione prenotazione) {
-        // nessuna transizione prevista (come nell'esempio StatoPorta del docente):
-        // annullare una prenotazione già Annullata non ha effetto.
+        // nessuna transizione prevista: annullare una prenotazione già Annullata
+        // non ha effetto.
     }
 
     @Override

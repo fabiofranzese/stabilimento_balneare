@@ -10,8 +10,7 @@ import java.awt.event.WindowEvent;
  * FinestraGestore è la schermata dell'area riservata al Gestore autenticato.
  *
  * Espone i casi d'uso del Gestore: Configurazione stabilimento e Definizione
- * tariffe; gli altri (monitoraggio, visualizzazione prenotazioni ricevute, ...)
- * verranno aggiunti qui in seguito.
+ * tariffe.
  *
  * La Definizione tariffe è disponibile solo dopo aver configurato lo
  * stabilimento: il relativo pulsante è abilitato solo se esiste almeno una fila.

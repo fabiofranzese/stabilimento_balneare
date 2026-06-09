@@ -109,8 +109,4 @@ public class FormRegistrazione {
                 break;
         }
     }
-
-    private void createUIComponents() {
-        // TODO: place custom component creation code here
-    }
 }

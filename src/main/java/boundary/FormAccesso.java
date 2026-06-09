@@ -13,8 +13,8 @@ import java.awt.event.WindowEvent;
  * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
  *
  * Raccoglie email e password e li invia al Controller GestoreUtenti, mostrando
- * l'esito del login. Le schermate vere e proprie di Cliente e Gestore saranno
- * realizzate nei casi d'uso successivi: qui ci limitiamo alla conferma di login.
+ * l'esito del login e aprendo l'area riservata corrispondente al ruolo
+ * (FinestraCliente o FinestraGestore).
  */
 public class FormAccesso {
 

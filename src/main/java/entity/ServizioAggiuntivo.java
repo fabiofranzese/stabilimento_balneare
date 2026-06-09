@@ -12,7 +12,7 @@ import java.util.List;
  * "capacita" è il tetto massimo di disponibilità deciso dal gestore (dato statico
  * di configurazione, richiesto dalla specifica come "disponibilità limitata").
  * La disponibilità residua per una certa data è invece un dato derivato dalle
- * prenotazioni attive (casi d'uso successivi), e non è memorizzata qui.
+ * prenotazioni attive, e non è memorizzata qui.
  */
 @Entity
 public class ServizioAggiuntivo {

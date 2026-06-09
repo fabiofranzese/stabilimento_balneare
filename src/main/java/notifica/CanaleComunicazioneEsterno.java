@@ -26,8 +26,8 @@ import java.util.Properties;
  * parametri SMTP sono letti dal classpath (email.properties, fuori da VCS). La
  * notifica è best-effort e successiva alla conferma dell'operazione: ogni errore
  * (configurazione assente, autenticazione, rete) viene loggato su stderr e NON
- * propagato, così non interrompe il flusso applicativo. L'invio avviene su un
- * thread in background per non bloccare l'interfaccia Swing.
+ * propagato, così non interrompe il flusso applicativo. L'invio è sincrono
+ * (applicazione monolitica, nessun thread in background).
  */
 public class CanaleComunicazioneEsterno {
 
@@ -42,21 +42,10 @@ public class CanaleComunicazioneEsterno {
 
     /*
      * Invia un messaggio sul canale esterno (email). Firma volutamente diversa da
-     * quella dell'applicazione: è ciò che l'Adapter deve adattare. Fire-and-forget
-     * su un thread daemon: il chiamante (Boundary) non si blocca sull'handshake SMTP.
+     * quella dell'applicazione: è ciò che l'Adapter deve adattare. Invio sincrono:
+     * l'applicazione è monolitica, nessun thread in background.
      */
     public void invia(String destinatario, String oggetto, String corpo) {
-        Thread invio = new Thread(() -> inviaEmail(destinatario, oggetto, corpo),
-                "invio-notifica-email");
-        invio.setDaemon(true);
-        invio.start();
-    }
-
-    /*
-     * Invio effettivo dell'email via SMTP (Jakarta Mail). Eseguito sul thread di
-     * background. Solo email: in caso di problemi si logga su stderr e si prosegue.
-     */
-    private void inviaEmail(String destinatario, String oggetto, String corpo) {
         if (config == null) {
             System.err.println("Invio notifica email saltato: configurazione "
                     + FILE_CONFIG + " assente o illeggibile.");

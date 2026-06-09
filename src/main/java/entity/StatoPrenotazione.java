@@ -5,11 +5,11 @@ package entity;
  * (livello Entity, BCED). Le sottoclassi concrete Prenotata e Annullata
  * incapsulano il comportamento che varia con lo stato.
  *
- * Oggetto puramente comportamentale, NON una Entity JPA: come nell'esempio
- * Porta/StatoPorta del docente, lo stato non ha una tabella propria. La sua
- * persistenza è ridotta a una sola colonna "tipo_stato" sulla tabella
- * Prenotazione: in scrittura se ne salva il tipo (Prenotazione.setStato), in
- * lettura l'istanza concreta è ricostruita da Prenotazione (@PostLoad).
+ * Oggetto puramente comportamentale, NON una Entity JPA: lo stato non ha una
+ * tabella propria. La sua persistenza è ridotta a una sola colonna "tipo_stato"
+ * sulla tabella Prenotazione: in scrittura se ne salva il tipo
+ * (Prenotazione.setStato), in lettura l'istanza concreta è ricostruita da
+ * Prenotazione (@PostLoad).
  */
 public abstract class StatoPrenotazione {
 
@@ -30,8 +30,8 @@ public abstract class StatoPrenotazione {
     /*
      * Evento "annulla" del pattern State: la Prenotazione (Context) delega allo
      * stato corrente. Ogni stato concreto decide la transizione — Prenotata passa
-     * ad Annullata (porta.setStato(new Annullata())), Annullata è un no-op
-     * ("nessuna transizione prevista"). Mirroring dell'esempio Porta/StatoPorta.
+     * ad Annullata (setStato(new Annullata())), Annullata è un no-op
+     * (nessuna transizione prevista).
      */
     public abstract void annulla(Prenotazione prenotazione);
 

@@ -27,10 +27,10 @@ import java.util.Map;
 import java.util.Set;
 
 /*
- * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso del
- * Gestore. Per ora copre la Configurazione stabilimento e la Definizione tariffe;
- * le operazioni di prenotazione/monitoraggio previste dal modello verranno
- * aggiunte qui nei casi d'uso successivi.
+ * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso che
+ * ruotano attorno allo stabilimento: Configurazione stabilimento, Definizione
+ * tariffe, Visualizzazione mappa, Effettua prenotazione e Gestione prenotazioni
+ * personali.
  *
  * Come GestoreUtenti, espone operazioni a grana grossa e scambia con il Boundary
  * solo tipi primitivi (int, String[], int[], double[]): il Boundary non conosce
@@ -544,8 +544,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Id degli ombrelloni, per fila: identificano l'ombrellone selezionato (usati
-     * per avviare la prenotazione nel caso d'uso successivo).
+     * Id degli ombrelloni, per fila: identificano l'ombrellone selezionato sulla
+     * mappa per avviarne la prenotazione.
      */
     public static long[][] idOmbrelloniPerFila() {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();

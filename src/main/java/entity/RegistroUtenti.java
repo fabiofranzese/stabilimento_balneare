@@ -17,11 +17,8 @@ import java.util.Map;
  *
  * Usa GestorePersistenza (livello Database) per rendere persistenti gli oggetti:
  * la logica di dominio resta qui, il codice tecnico di persistenza resta nel
- * package database.
- *
- * NOTE: come nel progetto di riferimento del docente, il Registro (Entity) usa
- * GestorePersistenza (Database); è una dipendenza Entity -> Database accettata
- * come idioma del progetto.
+ * package database. È la dipendenza Entity -> Database adottata come idioma del
+ * progetto per i servizi Registro.
  */
 public class RegistroUtenti {
 

@@ -7,9 +7,9 @@ import jakarta.persistence.*;
  * struttura dello stabilimento: appartiene a una FilaOmbrelloni (composizione) ed
  * è numerato progressivamente all'interno della propria fila.
  *
- * La disponibilità per una certa data NON è uno stato memorizzato qui: sarà un
- * dato derivato dalle prenotazioni attive (casi d'uso successivi). Per questo
- * l'ombrellone non ha un attributo "stato".
+ * La disponibilità per una certa data NON è uno stato memorizzato qui: è un dato
+ * derivato dalle prenotazioni attive. Per questo l'ombrellone non ha un attributo
+ * "stato".
  */
 @Entity
 public class Ombrellone {
