@@ -7,7 +7,7 @@ import java.time.LocalDate;
  * Entity, BCED): alta o bassa stagione.
  *
  * Il domain model la disegna come gerarchia astratta (Stagione → Alta / Bassa);
- * essendo un insieme chiuso di valori senza comportamento, qui è realizzata come
+ * essendo un insieme chiuso di valori senza comportamento, è realizzata come
  * enum, coerentemente con TipoFila. L'etichetta in italiano è l'unica sorgente
  * dei testi mostrati nella GUI (vedi GestoreStabilimento.stagioni()).
  */

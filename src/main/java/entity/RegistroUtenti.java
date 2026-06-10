@@ -15,10 +15,9 @@ import java.util.Map;
  * - Information Expert: conosce l'insieme degli Utenti, quindi gli competono il
  *   controllo di unicità dell'email e la verifica delle credenziali.
  *
- * Usa GestorePersistenza (livello Database) per rendere persistenti gli oggetti:
- * la logica di dominio resta qui, il codice tecnico di persistenza resta nel
- * package database. È la dipendenza Entity -> Database adottata come idioma del
- * progetto per i servizi Registro.
+ * Usa GestorePersistenza (livello Database): la logica di dominio resta qui, il
+ * codice tecnico di persistenza nel package database (dipendenza Entity ->
+ * Database, idioma del progetto per i servizi Registro).
  */
 public class RegistroUtenti {
 
@@ -49,13 +48,12 @@ public class RegistroUtenti {
     }
 
     /*
-     * Crea e salva un nuovo Gestore. Non è esposto alla registrazione utente:
-     * è usato dal livello setup per predisporre gli account dei gestori.
+     * Crea e salva un nuovo Gestore.
      *
-     * NOTE: nel domain model RegistroUtenti è «Cliente Creator»: la creazione
-     * dei Gestore è esclusa dal flusso applicativo. Questo metodo resta solo
-     * come helper di bootstrap, invocato dal package setup (DatiIniziali) e non
-     * dai casi d'uso; vive qui per riusare la cifratura della password (cifra()).
+     * NOTE: nel domain model RegistroUtenti è «Cliente Creator»: la creazione dei
+     * Gestore è fuori dal flusso applicativo. Questo è solo un helper di
+     * bootstrap, invocato dal package setup (DatiIniziali) e non dai casi d'uso;
+     * vive qui per riusare la cifratura della password (cifra()).
      */
     public Gestore registraGestore(String nome, String cognome, String email,
                                    String telefono, String passwordInChiaro) {

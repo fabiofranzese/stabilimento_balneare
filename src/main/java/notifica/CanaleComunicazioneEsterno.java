@@ -13,21 +13,15 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /*
- * CanaleComunicazioneEsterno è il sistema di notifica esterno verso cui inviare le
- * notifiche via email. È un componente esterno (COTS), fuori dai livelli BCED (vive
- * nel package `notifica`).
+ * CanaleComunicazioneEsterno è il sistema di notifica esterno (email): componente
+ * COTS, fuori dai livelli BCED. È l'"adaptee" del pattern Adapter, con una propria
+ * interfaccia invia(destinatario, oggetto, corpo) adattata da
+ * boundary.notifica.AdapterServizioNotifica.
  *
- * Rappresenta l'"adaptee" del pattern Adapter: ha una propria interfaccia
- * (invia(destinatario, oggetto, corpo)). L'Adapter concreto
- * (boundary.notifica.AdapterServizioNotifica), invocato dal Boundary alla conferma
- * dell'operazione, fa da ponte tra il messaggio dell'applicazione e questo canale.
- *
- * L'invio è reale, via Jakarta Mail su un relay SMTP (Brevo): le credenziali e i
- * parametri SMTP sono letti dal classpath (email.properties, fuori da VCS). La
- * notifica è best-effort e successiva alla conferma dell'operazione: ogni errore
- * (configurazione assente, autenticazione, rete) viene loggato su stderr e NON
- * propagato, così non interrompe il flusso applicativo. L'invio è sincrono
- * (applicazione monolitica, nessun thread in background).
+ * L'invio è reale, via Jakarta Mail su un relay SMTP (Brevo): credenziali e
+ * parametri sono letti dal classpath (email.properties, fuori da VCS). La notifica
+ * è best-effort e successiva alla conferma dell'operazione: ogni errore viene
+ * loggato su stderr e non propagato, così non interrompe il flusso applicativo.
  */
 public class CanaleComunicazioneEsterno {
 
@@ -42,8 +36,8 @@ public class CanaleComunicazioneEsterno {
 
     /*
      * Invia un messaggio sul canale esterno (email). Firma volutamente diversa da
-     * quella dell'applicazione: è ciò che l'Adapter deve adattare. Invio sincrono:
-     * l'applicazione è monolitica, nessun thread in background.
+     * quella dell'applicazione: è ciò che l'Adapter deve adattare. Invio sincrono
+     * (applicazione monolitica, nessun thread in background).
      */
     public void invia(String destinatario, String oggetto, String corpo) {
         if (config == null) {

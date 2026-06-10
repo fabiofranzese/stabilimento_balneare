@@ -56,8 +56,8 @@ public class FormEffettuaPrenotazione {
     private final List<JSpinner> spinnerServizi = new ArrayList<>();
     private long[] idServiziVisualizzati = new long[0];
 
-    // Adapter verso il sistema esterno di notifica: il Boundary effettua la chiamata
-    // al canale alla conferma dell'operazione (niente più Observer).
+    // Adapter verso il sistema esterno di notifica: è il Boundary a chiamare il
+    // canale, alla conferma dell'operazione.
     private final AdapterServizioNotifica notificatore =
             new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 

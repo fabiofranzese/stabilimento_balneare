@@ -8,9 +8,7 @@ import javax.swing.*;
  * Punto di ingresso dell'applicazione.
  *
  * Predispone i dati iniziali (account Gestore) e avvia l'interfaccia grafica Swing
- * sul thread di gestione degli eventi (Event Dispatch Thread). La notifica al
- * Servizio di Notifica è ora innescata dal Boundary alla conferma dell'operazione,
- * quindi non c'è cablaggio da fare qui.
+ * sul thread di gestione degli eventi (Event Dispatch Thread).
  */
 public class Main {
 

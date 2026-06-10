@@ -8,17 +8,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /*
- * Prenotazione è la prenotazione di un ombrellone per una certa data (livello
- * Entity, BCED). Lo stato è modellato col pattern State (StatoPrenotazione).
+ * Prenotazione di un ombrellone per un giorno (data), effettuata da un Cliente,
+ * con zero o più servizi aggiuntivi (livello Entity, BCED). Lo stato è modellato
+ * col pattern State (StatoPrenotazione).
  *
- * Riguarda un ombrellone per un giorno (data), è effettuata da un Cliente e può
- * includere zero o più servizi aggiuntivi. dataCreazione registra l'istante di
- * creazione (serve al limite temporale di annullamento nel caso d'uso Gestione
- * prenotazioni personali).
- *
- * Nota di dominio: la disponibilità di un ombrellone NON è un suo attributo, ma
- * un dato derivato: l'ombrellone è occupato in una data se esiste una
- * prenotazione attiva (stato Prenotata) che lo riguarda in quella data.
+ * La disponibilità di un ombrellone non è un suo attributo: è un dato derivato,
+ * l'ombrellone è occupato in una data se esiste una prenotazione attiva (stato
+ * Prenotata) che lo riguarda in quella data.
  */
 @Entity
 public class Prenotazione {
@@ -33,15 +29,14 @@ public class Prenotazione {
     private LocalDate data;
 
     /*
-     * Istante di creazione della prenotazione (per il limite di annullamento).
+     * Istante di creazione della prenotazione (dato di registrazione per lo storico).
      */
     private LocalDateTime dataCreazione;
 
     /*
-     * Prezzo totale "congelato" al momento della prenotazione (ombrellone +
-     * servizi × quantità, alle tariffe vigenti in quell'istante). Memorizzarlo
-     * rende la prenotazione indipendente da successive modifiche delle tariffe:
-     * lo storico mostra il prezzo effettivamente applicato al cliente.
+     * Prezzo totale "congelato" alla creazione, alle tariffe vigenti in quel
+     * momento: lo storico mostra il prezzo effettivamente applicato al cliente,
+     * indipendente da successive modifiche delle tariffe.
      */
     private double prezzoTotale;
 
@@ -51,12 +46,10 @@ public class Prenotazione {
 
     /*
      * Stato della prenotazione (pattern State). Lo stato è un oggetto puramente
-     * comportamentale (non una Entity): di esso si persiste solo il "tipo" come una
-     * colonna "tipo_stato" su questa stessa tabella (tipoStato), mentre l'istanza
-     * concreta Prenotata/Annullata è @Transient e viene ricostruita in lettura
-     * (@PostLoad). La transizione (new Annullata()) è così un semplice UPDATE della
-     * colonna; nessuna tabella o riga-stato separata. Le due rappresentazioni sono
-     * tenute allineate da setStato.
+     * comportamentale, non una Entity: se ne persiste solo il tipo nella colonna
+     * "tipo_stato", mentre l'istanza concreta Prenotata/Annullata è @Transient e
+     * viene ricostruita in lettura (@PostLoad). setStato tiene allineate le due
+     * rappresentazioni.
      */
     @Column(name = "tipo_stato")
     private String tipoStato;
@@ -73,12 +66,10 @@ public class Prenotazione {
     private Cliente cliente;
 
     /*
-     * Servizi aggiuntivi inclusi nella prenotazione, con la quantità prenotata per
-     * ciascuno (associazione "include" con attributo quantità: es. 2 sdraio).
-     * Modellata come @ElementCollection di Integer (la quantità) con chiave la
-     * Entity ServizioAggiuntivo: nessuna nuova classe di dominio. EAGER come le
-     * altre collezioni del progetto, perché GestorePersistenza chiude
-     * l'EntityManager al termine di ogni operazione.
+     * Servizi aggiuntivi inclusi, con la quantità prenotata per ciascuno
+     * (associazione "include" con attributo quantità): Map con chiave la Entity
+     * ServizioAggiuntivo, senza una classe associativa dedicata. EAGER perché
+     * GestorePersistenza chiude l'EntityManager al termine di ogni operazione.
      */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "prenotazione_servizio",
@@ -88,12 +79,6 @@ public class Prenotazione {
     private Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
 
     public Prenotazione() {
-    }
-
-    public Prenotazione(LocalDate data, Ombrellone ombrellone, StatoPrenotazione stato) {
-        this.data = data;
-        this.ombrellone = ombrellone;
-        setStato(stato);
     }
 
     public Prenotazione(LocalDate data, Ombrellone ombrellone, StatoPrenotazione stato,
@@ -111,12 +96,9 @@ public class Prenotazione {
     }
 
     /*
-     * Information Expert del limite di annullamento: indica se la prenotazione è
-     * annullabile alla data odierna indicata. Combina due condizioni:
-     * - lo stato lo consente (pattern State: solo una Prenotata è annullabile);
-     * - la richiesta avviene entro il limite temporale, cioè prima della data
-     *   prenotata (oggi < data). Il giorno stesso e i giorni successivi sono
-     *   oltre il limite.
+     * Information Expert del limite di annullamento: la prenotazione è annullabile
+     * se lo stato lo consente (solo una Prenotata) e la richiesta avviene entro il
+     * limite temporale, cioè prima del giorno prenotato (oggi < data).
      */
     public boolean isAnnullabile(LocalDate oggi) {
         return stato != null && stato.isAnnullabile()
@@ -124,14 +106,12 @@ public class Prenotazione {
     }
 
     /*
-     * Evento "annulla" del pattern State: il Context delega allo stato corrente
-     * (come Porta.click() -> stato.click(this)). È lo stato a decidere la
-     * transizione (Prenotata -> Annullata) o a ignorarla (Annullata: no-op).
+     * Evento "annulla" del pattern State: il Context delega allo stato corrente,
+     * che decide la transizione (Prenotata -> Annullata) o la ignora (Annullata).
      *
      * NOTE: la precondizione temporale (oggi < data) è verificata a monte dal
      * Controller tramite isAnnullabile(oggi); qui lo stato gestisce la sola
-     * validità di stato. La verifica di dominio resta nel dominio, l'orchestrazione
-     * nel Controller.
+     * validità di stato.
      */
     public void annulla() {
         if (stato != null) {
@@ -168,9 +148,9 @@ public class Prenotazione {
     }
 
     /*
-     * Imposta lo stato (oggetto comportamentale) e ne allinea la rappresentazione
-     * persistente "tipo_stato": è l'unico punto che traduce l'istanza nel suo tipo,
-     * così le due viste dello stesso stato non possono divergere.
+     * Imposta lo stato e ne allinea la rappresentazione persistente "tipo_stato":
+     * è l'unico punto che traduce l'istanza nel suo tipo, così le due viste dello
+     * stesso stato non possono divergere.
      */
     public void setStato(StatoPrenotazione stato) {
         this.stato = stato;
@@ -179,9 +159,9 @@ public class Prenotazione {
     }
 
     /*
-     * Dopo il caricamento dal DB, ricostruisce l'istanza concreta dello stato dal
+     * Dopo il caricamento dal DB ricostruisce l'istanza concreta dello stato dal
      * "tipo_stato" salvato (lo stato è @Transient): è il verso di lettura del
-     * pattern State persistito come singola colonna, senza tabella separata.
+     * pattern State persistito come singola colonna.
      */
     @PostLoad
     private void ricostruisciStato() {

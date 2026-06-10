@@ -14,9 +14,8 @@ import java.util.List;
  * a istanziarli (creaOmbrellone): chi aggrega crea.
  *
  * La collezione è EAGER perché GestorePersistenza chiude l'EntityManager al
- * termine di ogni operazione: gli ombrelloni vanno caricati subito, prima della
- * chiusura, per poter essere letti dai livelli superiori senza errori di lazy
- * loading.
+ * termine di ogni operazione: gli ombrelloni vanno caricati subito, per poter
+ * essere letti dai livelli superiori senza errori di lazy loading.
  */
 @Entity
 public class FilaOmbrelloni {

@@ -65,8 +65,8 @@ public class FormGestionePrenotazioni {
     private long[] idPrenotazioni = new long[0];
     private boolean[] annullabili = new boolean[0];
 
-    // Adapter verso il sistema esterno di notifica: il Boundary effettua la chiamata
-    // al canale alla conferma dell'annullamento (niente più Observer).
+    // Adapter verso il sistema esterno di notifica: è il Boundary a chiamare il
+    // canale, alla conferma dell'annullamento.
     private final AdapterServizioNotifica notificatore =
             new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 

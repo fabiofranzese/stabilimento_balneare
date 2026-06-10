@@ -3,14 +3,12 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * Utente è la superclasse astratta del dominio (livello Entity, BCED).
- * Cliente e Gestore la estendono.
+ * Utente è la superclasse astratta del dominio (livello Entity, BCED): Cliente
+ * e Gestore la estendono.
  *
- * Mappatura dell'ereditarietà:
- * usiamo la strategia SINGLE_TABLE, in cui tutte le sottoclassi sono salvate
- * nella stessa tabella. La colonna discriminante è "ruolo": vale "CLIENTE" per
- * i Cliente e "GESTORE" per i Gestore. In questo modo il ruolo associato a
- * ciascun account è gestito direttamente da JPA tramite il discriminatore.
+ * Ereditarietà mappata con strategia SINGLE_TABLE: tutte le sottoclassi nella
+ * stessa tabella, con colonna discriminante "ruolo" ("CLIENTE"/"GESTORE"). Il
+ * ruolo associato a ciascun account è così gestito direttamente da JPA.
  */
 @Entity
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)

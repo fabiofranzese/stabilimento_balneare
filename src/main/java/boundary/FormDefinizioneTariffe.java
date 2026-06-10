@@ -42,7 +42,7 @@ public class FormDefinizioneTariffe {
     private final JFrame finestraChiamante;
     private JFrame frame;
 
-    // Etichette dei elementi e delle stagioni (dal Controller), usate per le
+    // Etichette degli elementi e delle stagioni (dal Controller), usate per le
     // combo e per l'elenco.
     private final String[] etichetteElemento = GestoreStabilimento.elementiTariffa();
     private final String[] etichetteStagione = GestoreStabilimento.stagioni();

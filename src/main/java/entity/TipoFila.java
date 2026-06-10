@@ -5,10 +5,11 @@ package entity;
  * stabilimento (livello Entity, BCED).
  *
  * Il domain model la disegna come gerarchia astratta (TipoFila → PrimaFila /
- * FilaIntermedia / UltimaFila); poiché è un insieme chiuso di tre valori senza
- * comportamento, qui è realizzata come enum: più semplice da mappare con JPA
- * (@Enumerated su FilaOmbrelloni) e da usare. L'etichetta in italiano è l'unica
- * sorgente dei testi mostrati nella GUI (vedi GestoreStabilimento.tipiFila()).
+ * FilaIntermedia / UltimaFila); essendo un insieme chiuso di tre valori senza
+ * comportamento, è realizzata come enum, più semplice da mappare con JPA
+ * (@Enumerated su FilaOmbrelloni). L'etichetta in italiano è l'unica sorgente
+ * dei testi mostrati nella GUI (vedi GestoreStabilimento.etichettePosizioniFile
+ * ed elementiTariffa).
  */
 public enum TipoFila {
 
@@ -28,10 +29,9 @@ public enum TipoFila {
 
     /*
      * Regola di dominio: la posizione di una fila è derivata dal suo ordine nello
-     * stabilimento, non scelta dal gestore. La prima fila è la PRIMA_FILA (anche
-     * se è l'unica), l'ultima è la ULTIMA_FILA, tutte quelle in mezzo sono
-     * FILA_INTERMEDIA. Il primo controllo che riesce vince: così con una sola fila
-     * il risultato è PRIMA_FILA.
+     * stabilimento, non scelta dal gestore. La prima è PRIMA_FILA (anche se è
+     * l'unica: il primo controllo vince), l'ultima è ULTIMA_FILA, quelle in mezzo
+     * FILA_INTERMEDIA.
      */
     public static TipoFila perPosizione(int indice, int totale) {
         if (indice <= 0) {

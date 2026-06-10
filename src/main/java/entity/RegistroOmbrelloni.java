@@ -16,9 +16,7 @@ import java.util.Map;
  * - Information Expert: conosce l'insieme delle file, quindi gli compete la loro
  *   ricerca complessiva (getFile).
  *
- * Come gli altri Registro, usa GestorePersistenza (livello Database): la logica
- * di dominio resta qui, il codice tecnico di persistenza resta nel package
- * database (dipendenza Entity -> Database accettata come idioma del progetto).
+ * Usa GestorePersistenza (livello Database), come gli altri Registro.
  */
 public class RegistroOmbrelloni {
 
@@ -29,19 +27,13 @@ public class RegistroOmbrelloni {
     }
 
     /*
-     * Caso d'uso Configurazione stabilimento: (ri)definisce la disposizione.
-     *
-     * Strategia "replace": la configurazione precedente viene rimossa e
-     * rigenerata a partire dai dati indicati. Per ogni fila si crea la
-     * FilaOmbrelloni con i suoi ombrelloni numerati 1..N; il salvataggio della
-     * fila propaga (cascade) agli ombrelloni.
-     *
-     * La posizione (prima/intermedia/ultima) non è scelta dal gestore: è derivata
-     * dall'ordine della fila tramite TipoFila.perPosizione, così l'ordinamento
-     * dello stabilimento (dal mare verso l'interno) non può essere incoerente.
-     *
-     * L'array ombrelloniPerFila descrive, per ogni fila i (numerata i+1), quanti
-     * ombrelloni contiene.
+     * Caso d'uso Configurazione stabilimento: (ri)definisce la disposizione con
+     * strategia "replace" — la configurazione precedente viene rimossa e
+     * rigenerata. Per ogni fila i (numerata i+1, con ombrelloniPerFila[i]
+     * ombrelloni numerati 1..N) si crea la FilaOmbrelloni; il salvataggio propaga
+     * (cascade) agli ombrelloni. La posizione (prima/intermedia/ultima) non è
+     * scelta dal gestore: è derivata dall'ordine tramite TipoFila.perPosizione,
+     * così l'ordinamento dal mare verso l'interno non può essere incoerente.
      */
     public void configuraDisposizione(int[] ombrelloniPerFila) {
         eliminaTutteLeFile();

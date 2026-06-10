@@ -33,15 +33,14 @@ import java.util.Set;
  * personali.
  *
  * Come GestoreUtenti, espone operazioni a grana grossa e scambia con il Boundary
- * solo tipi primitivi (int, String[], int[], double[]): il Boundary non conosce
- * le Entity (FilaOmbrelloni, Ombrellone, ServizioAggiuntivo, TipoFila, Tariffa,
- * Stagione) e non importa il package entity, rispettando la separazione BCED.
+ * solo tipi primitivi e array: il Boundary non conosce le Entity e non importa
+ * il package entity, nel rispetto della separazione BCED.
  *
  * NOTE: il modello prevede metodi a grana fine (aggiungiFila(tipoFila),
  * aggiungiOmbrellone(fila, numero)); esporli al Boundary farebbe però transitare
- * un'Entity (la fila) verso la GUI, violando BCED. Si usa quindi un'unica
- * operazione salvaConfigurazione: la Façade compone internamente le file e i
- * loro ombrelloni tramite FilaOmbrelloni.creaOmbrellone.
+ * un'Entity (la fila) verso la GUI. Si usa quindi un'unica operazione
+ * salvaConfigurazione: la Façade compone internamente le file e i loro
+ * ombrelloni tramite FilaOmbrelloni.creaOmbrellone.
  */
 public class GestoreStabilimento {
 
@@ -74,11 +73,10 @@ public class GestoreStabilimento {
     public static final int ERRORE_ANNULLAMENTO = 33;
 
     /*
-     * Etichette in italiano della posizione di ogni fila, derivate dall'ordine:
-     * con numeroFile file restituisce, per ogni indice, l'etichetta di
-     * TipoFila.perPosizione (prima / intermedia / ultima). Il Boundary la usa per
-     * mostrare la posizione assegnata dal sistema, che si aggiorna a ogni
-     * aggiunta/rimozione di una fila. La regola resta nel dominio (TipoFila).
+     * Etichette in italiano della posizione di ogni fila, derivate dall'ordine
+     * (TipoFila.perPosizione: prima/intermedia/ultima). Il Boundary le usa per
+     * mostrare la posizione assegnata dal sistema, aggiornata a ogni
+     * aggiunta/rimozione di una fila; la regola resta nel dominio (TipoFila).
      */
     public static String[] etichettePosizioniFile(int numeroFile) {
         String[] etichette = new String[Math.max(0, numeroFile)];
@@ -94,11 +92,9 @@ public class GestoreStabilimento {
      * Caso d'uso Configurazione stabilimento.
      *
      * Riceve la disposizione (per ogni fila: numero di ombrelloni) e i servizi
-     * aggiuntivi (per ognuno: descrizione + capacità). Valida i dati, poi rigenera
-     * disposizione e servizi (strategia "replace"). La posizione delle file non è
-     * scelta dal gestore: è derivata dall'ordine in RegistroOmbrelloni.
-     *
-     * Gli array dei servizi (descrizioniServizi, capacitaServizi) sono paralleli.
+     * aggiuntivi (descrizione + capacità, array paralleli). Valida i dati, poi
+     * rigenera disposizione e servizi (strategia "replace"). La posizione delle
+     * file non è scelta dal gestore: è derivata dall'ordine in RegistroOmbrelloni.
      */
     public static int salvaConfigurazione(int[] ombrelloniPerFila,
                                           String[] descrizioniServizi, int[] capacitaServizi) {
@@ -108,9 +104,8 @@ public class GestoreStabilimento {
         }
 
         // Precondizione: la riconfigurazione è distruttiva (sostituisce file e
-        // servizi). Se esiste anche una sola prenotazione attiva, le sue
-        // postazioni/servizi non possono essere rimossi senza incoerenze: si
-        // blocca l'operazione.
+        // servizi), quindi è bloccata se esiste anche una sola prenotazione attiva
+        // che ne riferisce postazioni o servizi.
         if (new RegistroPrenotazioni().esistonoPrenotazioniAttive()) {
             return PRENOTAZIONI_PRESENTI;
         }
@@ -128,9 +123,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Indica se esiste almeno una prenotazione attiva. La riconfigurazione dello
-     * stabilimento è distruttiva: il Boundary usa questa precondizione per non
-     * aprire nemmeno la configurazione quando ci sono prenotazioni attive.
+     * Indica se esiste almeno una prenotazione attiva: il Boundary usa questa
+     * precondizione per non aprire nemmeno la configurazione (distruttiva)
+     * quando ci sono prenotazioni attive.
      */
     public static boolean prenotazioniAttivePresenti() {
         return new RegistroPrenotazioni().esistonoPrenotazioniAttive();
@@ -173,10 +168,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Validazione dei dati di configurazione:
-     * - almeno una fila, ciascuna con almeno un ombrellone;
-     * - array dei servizi coerenti in lunghezza; ogni descrizione non vuota;
-     *   ogni capacità non negativa.
+     * Validazione della configurazione: almeno una fila, ciascuna con almeno un
+     * ombrellone; array dei servizi coerenti in lunghezza, descrizioni non vuote,
+     * capacità non negative.
      */
     private static boolean datiValidi(int[] ombrelloniPerFila,
                                       String[] descrizioniServizi, int[] capacitaServizi) {
@@ -231,9 +225,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Indica se lo stabilimento è già stato configurato (esiste almeno una fila).
-     * La definizione delle tariffe è disponibile solo in tal caso: senza file non
-     * ci sono postazioni da tariffare.
+     * Indica se lo stabilimento è già stato configurato (esiste almeno una fila):
+     * senza file non ci sono postazioni da tariffare.
      */
     public static boolean configurazioneEffettuata() {
         return !new RegistroOmbrelloni().getFile().isEmpty();
@@ -241,9 +234,9 @@ public class GestoreStabilimento {
 
     /*
      * Etichette dei possibili "elementi" di una tariffa, per la combo del form:
-     * prima i tipi di fila effettivamente configurati (ombrelloni), poi i servizi
-     * aggiuntivi esistenti. L'indice scelto identifica l'elemento: 0..numTipi-1
-     * sono i tipi di fila configurati, da numTipi in poi i servizi.
+     * prima i tipi di fila effettivamente configurati, poi i servizi aggiuntivi.
+     * L'indice scelto identifica l'elemento: 0..numTipi-1 i tipi di fila, da
+     * numTipi in poi i servizi.
      */
     public static String[] elementiTariffa() {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -262,13 +255,12 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Caso d'uso Definizione tariffe (con eliminazione, "reconcile-on-save").
+     * Caso d'uso Definizione tariffe ("reconcile-on-save").
      *
-     * La lista inviata è lo stato desiderato completo: per ogni tariffa indicata
-     * (elemento + stagione + costo) imposta o aggiorna il prezzo (strategia
-     * "upsert" nel RegistroTariffe), e in più elimina dal database le tariffe non
-     * più presenti nella lista (rimosse dal gestore nel form). Una lista vuota è
-     * valida e significa "elimina tutte le tariffe". Gli array sono paralleli.
+     * La lista inviata (array paralleli elemento + stagione + costo) è lo stato
+     * desiderato completo: ogni tariffa indicata viene impostata o aggiornata
+     * ("upsert" nel RegistroTariffe), quelle non più presenti vengono eliminate
+     * dal database. Una lista vuota è valida: "elimina tutte le tariffe".
      */
     public static int salvaTariffe(int[] elementiIndici, int[] stagioniIndici, double[] costi) {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -317,11 +309,10 @@ public class GestoreStabilimento {
      * Elimina le tariffe presenti nel database ma non nell'insieme inviato dal
      * gestore (chiavi elemento+stagione).
      *
-     * NOTE: la riconciliazione è limitata agli elementi *visibili* nel form (tipi
-     * di fila configurati + servizi esistenti). Una tariffa relativa a un tipo/
-     * servizio non più presente (indice -1) non compare nell'elenco e quindi non
-     * può essere stata rimossa dal gestore: viene preservata in archivio (e
-     * riutilizzata se quell'elemento torna disponibile), non eliminata.
+     * NOTE: la riconciliazione è limitata agli elementi visibili nel form (tipi
+     * di fila configurati + servizi esistenti). Una tariffa di un tipo/servizio
+     * non più presente non compare nell'elenco, quindi non può essere stata
+     * rimossa dal gestore: viene preservata in archivio, non eliminata.
      */
     private static void eliminaTariffeNonInviate(RegistroTariffe registroTariffe,
                                                  List<TipoFila> tipi, List<ServizioAggiuntivo> servizi,
@@ -346,7 +337,7 @@ public class GestoreStabilimento {
 
     /*
      * Chiave univoca di una tariffa per la riconciliazione: indice dell'elemento
-     * (tipo di fila o servizio) e ordinale della stagione.
+     * e ordinale della stagione.
      */
     private static String chiaveTariffa(int elemento, int stagioneOrdinale) {
         return elemento + ":" + stagioneOrdinale;
@@ -389,8 +380,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Validazione delle tariffe: array coerenti in lunghezza, ogni indice valido,
-     * e ogni costo strettamente positivo (flusso: tariffa <= 0 è un errore). Una
+     * Validazione delle tariffe: array coerenti in lunghezza, indici validi,
+     * costi strettamente positivi (dal flusso: tariffa <= 0 è un errore). Una
      * lista vuota è valida: significa "elimina tutte le tariffe".
      */
     private static boolean datiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
@@ -422,9 +413,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Costruisce le righe delle tariffe correnti come array {elemento, stagione,
-     * costo}, ordinate in modo deterministico: così i tre metodi di lettura
-     * restituiscono array paralleli allineati anche se le query cambiano ordine.
+     * Righe delle tariffe correnti come array {elemento, stagione, costo}, in
+     * ordine deterministico: così i tre metodi di lettura restituiscono array
+     * paralleli allineati anche se le query cambiano ordine.
      */
     private static List<double[]> righeTariffe() {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -462,9 +453,8 @@ public class GestoreStabilimento {
 
     /*
      * Tipi di fila effettivamente configurati (presenti in almeno una fila), in
-     * ordine stabile (ordinale dell'enum). Su questo elenco si basa la codifica
-     * degli indici dei tipi di fila come elementi tariffabili: si possono definire
-     * tariffe solo per i tipi di fila che esistono nello stabilimento.
+     * ordine stabile (ordinale dell'enum): si possono tariffare solo i tipi di
+     * fila che esistono nello stabilimento.
      */
     private static List<TipoFila> tipiFilaConfigurati() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
@@ -503,16 +493,15 @@ public class GestoreStabilimento {
 
     // ===== Visualizzazione mappa =====
     //
-    // Realizzazione, sicura rispetto a BCED, di visualizzaDisponibilita(data): il
-    // Boundary riceve solo array di primitivi/etichette, allineati per indice di
-    // fila e poi per indice di ombrellone. Le file sono ordinate per posizione
-    // (prima → intermedia → ultima, poi per numero): così la mappa va dalla riva
-    // verso l'interno e il lato mare è quello delle prime file. Nessuna Entity
-    // verso la GUI.
+    // Realizzazione, sicura rispetto a BCED, di visualizzaDisponibilita(data):
+    // il Boundary riceve solo array di primitivi/etichette, allineati per indice
+    // di fila e poi di ombrellone. Le file sono ordinate per posizione (prima →
+    // intermedia → ultima, poi per numero): la mappa va dalla riva verso
+    // l'interno.
 
     /*
-     * Etichette delle file: "Fila N". La posizione (prima/intermedia/ultima) non
-     * è mostrata: è suggerita dall'ordine delle file rispetto al mare.
+     * Etichette delle file: "Fila N". La posizione non è mostrata: è suggerita
+     * dall'ordine delle file rispetto al mare.
      */
     public static String[] etichetteFile() {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
@@ -563,8 +552,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Disponibilità degli ombrelloni in una data, per fila: true = libero,
-     * false = occupato (dato derivato dalle prenotazioni attive).
+     * Disponibilità degli ombrelloni in una data, per fila: true = libero
+     * (dato derivato dalle prenotazioni attive).
      */
     public static boolean[][] disponibilitaPerFila(LocalDate data) {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
@@ -583,9 +572,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo del tipo di fila indicato per la stagione in cui cade la data scelta
-     * (condiviso da tutti gli ombrelloni della fila). Vale -1 se per quella
-     * stagione la tariffa non è definita.
+     * Prezzo del tipo di fila indicato per la stagione della data scelta
+     * (condiviso da tutti gli ombrelloni della fila); -1 se la tariffa non è
+     * definita.
      */
     public static double prezzoFila(int indiceFila, LocalDate data) {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
@@ -632,15 +621,15 @@ public class GestoreStabilimento {
     // ===== Effettua prenotazione =====
     //
     // Operazioni del caso d'uso Effettua Prenotazione (estensione di
-    // Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e servizi
-    // con valori semplici (email, id): nessuna Entity attraversa il confine B/C.
+    // Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e
+    // servizi con valori semplici (email, id): nessuna Entity attraversa il
+    // confine B/C. I metodi di lettura sui servizi restituiscono array paralleli,
+    // allineati dall'ordine stabile di serviziSelezionabili(data).
 
     /*
-     * Servizi aggiuntivi che il cliente può prenotare per la data scelta: quelli
-     * con disponibilità residua positiva E con una tariffa definita per la stagione
-     * di quella data. I servizi esauriti o senza tariffa non sono mostrati. Su
-     * questo elenco (ordine stabile) si allineano descrizioniServizi(data),
-     * idServizi(data), residuoServizi(data) e prezziServizi(data).
+     * Servizi che il cliente può prenotare per la data scelta: quelli con
+     * disponibilità residua positiva E con una tariffa definita per la stagione
+     * di quella data; gli altri non sono mostrati.
      */
     private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -659,9 +648,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Descrizioni dei servizi prenotabili per la data: descrizioniServizi(data)[i],
-     * idServizi(data)[i], residuoServizi(data)[i] e prezziServizi(data)[i]
-     * descrivono lo stesso servizio.
+     * Descrizioni dei servizi prenotabili per la data.
      */
     public static String[] descrizioniServizi(LocalDate data) {
         List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
@@ -675,8 +662,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Id dei servizi prenotabili per la data, allineati a descrizioniServizi(data):
-     * identificano il servizio scelto nella prenotazione.
+     * Id dei servizi prenotabili per la data: identificano il servizio scelto
+     * nella prenotazione.
      */
     public static long[] idServizi(LocalDate data) {
         List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
@@ -690,8 +677,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Disponibilità residua di ciascun servizio prenotabile per la data (dato
-     * derivato dalle prenotazioni attive). È la quantità massima ordinabile.
+     * Disponibilità residua di ciascun servizio prenotabile per la data: è la
+     * quantità massima ordinabile (dato derivato dalle prenotazioni attive).
      */
     public static int[] residuoServizi(LocalDate data) {
         List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
@@ -707,7 +694,6 @@ public class GestoreStabilimento {
 
     /*
      * Prezzo unitario di ciascun servizio prenotabile per la stagione della data.
-     * Allineato a descrizioniServizi(data).
      */
     public static double[] prezziServizi(LocalDate data) {
         List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
@@ -722,8 +708,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo dell'ombrellone (in base al tipo della sua fila) per la stagione in
-     * cui cade la data; -1 se la tariffa non è definita o l'ombrellone non esiste.
+     * Prezzo dell'ombrellone (dal tipo della sua fila) per la stagione della
+     * data; -1 se la tariffa non è definita o l'ombrellone non esiste.
      */
     public static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
         Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
@@ -736,10 +722,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo totale della prenotazione: ombrellone + servizi selezionati per le
-     * rispettive quantità, alla stagione della data. Gli array dei servizi
-     * (idServiziScelti, quantita) sono paralleli. Le tariffe non definite (-1) non
-     * incidono sul totale.
+     * Prezzo totale della prenotazione: ombrellone + servizi per le rispettive
+     * quantità (array paralleli), alla stagione della data. Le tariffe non
+     * definite (-1) non incidono sul totale.
      */
     public static double prezzoTotale(long idOmbrellone, long[] idServiziScelti,
                                       int[] quantita, LocalDate data) {
@@ -767,12 +752,11 @@ public class GestoreStabilimento {
      * Caso d'uso Effettua Prenotazione.
      *
      * Risolve cliente (per email) e ombrellone (per id) e costruisce la mappa
-     * servizio→quantità (solo le quantità positive). Verifica i conflitti
+     * servizio→quantità (solo quantità positive). Verifica i conflitti
      * interrogando il RegistroPrenotazioni (Information Expert) — disponibilità
-     * dell'ombrellone (estensione 2.a) e residuo dei servizi (estensione 3.1.a) —
-     * e ne mappa l'esito in un codice per il Boundary, poi delega la creazione al
-     * Registro. Niente eccezioni di controllo: i conflitti sono query di dominio.
-     * Gli array idServiziScelti e quantita sono paralleli.
+     * dell'ombrellone (estensione 2.a) e residuo dei servizi (estensione 3.1.a)
+     * — e ne mappa l'esito in un codice per il Boundary, poi delega la creazione
+     * al Registro: i conflitti sono query di dominio, non eccezioni di controllo.
      */
     public static int effettuaPrenotazione(String emailCliente, long idOmbrellone,
                                            LocalDate data, long[] idServiziScelti, int[] quantita) {
@@ -813,8 +797,6 @@ public class GestoreStabilimento {
 
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
 
-        // Controllo dei conflitti tramite le query di dominio del Registro
-        // (Information Expert), mappate nei codici di esito (niente eccezioni).
         if (registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data)) {
             // Estensione 2.a: ombrellone già occupato per la data scelta.
             return OMBRELLONE_NON_DISPONIBILE;
@@ -871,17 +853,15 @@ public class GestoreStabilimento {
     // ===== Gestione prenotazioni personali =====
     //
     // Operazioni del caso d'uso Gestione prenotazioni personali (attore
-    // ClienteAutenticato): consultazione dello storico delle proprie prenotazioni
-    // e annullamento entro il limite temporale. Il Boundary identifica il cliente
-    // con l'email e la prenotazione con il suo id: nessuna Entity attraversa il
-    // confine B/C. I metodi di lettura restituiscono array paralleli, allineati
-    // dallo stesso ordinamento (prenotazioniOrdinate): l'elenco mostra solo la
-    // data, mentre i campi di dettaglio (postazione, servizi, stato, prezzo) sono
-    // mostrati per la prenotazione selezionata.
+    // ClienteAutenticato): consultazione dello storico e annullamento entro il
+    // limite temporale. Il Boundary identifica il cliente con l'email e la
+    // prenotazione con il suo id. I metodi di lettura restituiscono array
+    // paralleli, allineati dall'ordinamento stabile di prenotazioniOrdinate:
+    // l'elenco mostra la data, i campi di dettaglio riguardano la prenotazione
+    // selezionata.
 
     /*
-     * Date delle prenotazioni del cliente (per l'elenco nel form: una voce per
-     * prenotazione). Allineata per indice a tutti gli altri array di lettura.
+     * Date delle prenotazioni del cliente (una voce per prenotazione).
      */
     public static String[] datePrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -896,8 +876,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Postazione scelta di ciascuna prenotazione del cliente ("Ombrellone n. X
-     * (Fila Y)"), per il dettaglio. Allineata a datePrenotazioniCliente.
+     * Postazione scelta di ciascuna prenotazione ("Ombrellone n. X (Fila Y)").
      */
     public static String[] postazioniPrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -911,9 +890,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Servizi aggiuntivi (con quantità) di ciascuna prenotazione del cliente,
-     * "nessuno" se non ce ne sono. Per il dettaglio; allineata a
-     * datePrenotazioniCliente.
+     * Servizi aggiuntivi (con quantità) di ciascuna prenotazione, "nessuno" se
+     * non ce ne sono.
      */
     public static String[] serviziPrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -928,8 +906,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Stato di ciascuna prenotazione del cliente ("Prenotata"/"Annullata"), per il
-     * dettaglio. Allineata a datePrenotazioniCliente.
+     * Stato di ciascuna prenotazione ("Prenotata"/"Annullata").
      */
     public static String[] statiPrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -944,8 +921,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo totale "congelato" di ciascuna prenotazione del cliente, per il
-     * dettaglio. Allineato a datePrenotazioniCliente.
+     * Prezzo totale "congelato" di ciascuna prenotazione.
      */
     public static double[] prezziPrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -959,8 +935,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Id delle prenotazioni del cliente, allineati a datePrenotazioniCliente:
-     * identificano la prenotazione selezionata per l'annullamento.
+     * Id delle prenotazioni del cliente: identificano la prenotazione selezionata
+     * per l'annullamento.
      */
     public static long[] idPrenotazioniCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -974,10 +950,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Per ogni prenotazione del cliente, indica se è annullabile alla data odierna
-     * (stato Prenotata e richiesta entro il limite temporale: oggi < data).
-     * Allineata a datePrenotazioniCliente: il Boundary la usa per
-     * abilitare/disabilitare l'annullamento sulla prenotazione selezionata.
+     * Per ogni prenotazione, indica se è annullabile oggi (stato Prenotata e
+     * oggi < data): il Boundary la usa per abilitare/disabilitare l'annullamento.
      */
     public static boolean[] annullabiliCliente(String emailCliente) {
         List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
@@ -995,10 +969,9 @@ public class GestoreStabilimento {
      * Caso d'uso Gestione prenotazioni personali — Annullamento prenotazione.
      *
      * Risolve cliente (per email) e prenotazione (per id), verifica che la
-     * prenotazione appartenga a quel cliente (gestione dei permessi) e che sia
-     * annullabile entro il limite temporale, poi delega al RegistroPrenotazioni la
-     * transizione a Annullata, il salvataggio e la notifica. Restituisce un codice
-     * di esito per il Boundary.
+     * prenotazione appartenga a quel cliente e che sia annullabile entro il
+     * limite temporale, poi delega al RegistroPrenotazioni la transizione ad
+     * Annullata e il salvataggio. Restituisce un codice di esito per il Boundary.
      */
     public static int annullaPrenotazione(String emailCliente, long idPrenotazione) {
         if (emailCliente == null) {
@@ -1038,8 +1011,8 @@ public class GestoreStabilimento {
 
     /*
      * Prenotazioni del cliente in ordine deterministico (per data, poi per id):
-     * l'ordine stabile su cui si allineano gli array di lettura. Restituisce una
-     * lista vuota se l'email non corrisponde a un cliente.
+     * l'ordine stabile su cui si allineano gli array di lettura. Lista vuota se
+     * l'email non corrisponde a un cliente.
      */
     private static List<Prenotazione> prenotazioniOrdinate(String emailCliente) {
         Cliente cliente = clientePerEmail(emailCliente);
@@ -1073,8 +1046,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Elenco dei servizi aggiuntivi di una prenotazione, con quantità
-     * ("2 x Lettino, 1 x Cabina"); stringa vuota se non ci sono servizi.
+     * Servizi aggiuntivi di una prenotazione, con quantità ("2 x Lettino,
+     * 1 x Cabina"); stringa vuota se non ci sono servizi.
      */
     private static String descriviServizi(Prenotazione prenotazione) {
         StringBuilder servizi = new StringBuilder();
@@ -1106,11 +1079,10 @@ public class GestoreStabilimento {
 
     /*
      * Corpo (testo) della notifica di conferma, composto dagli stessi input della
-     * prenotazione appena effettuata. Il Boundary lo richiede dopo l'esito OK e lo
-     * passa, insieme al destinatario (l'email del cliente autenticato, che il
-     * Boundary già conosce), al proprio Adapter. Restituisce null se i dati non sono
-     * risolvibili (il Boundary salta la notifica). Attraversa il confine solo una
-     * String: nessuna Entity, nessun oggetto di trasferimento dedicato.
+     * prenotazione appena effettuata. Il Boundary lo richiede dopo l'esito OK e
+     * lo passa, col destinatario che già conosce, al proprio Adapter; null se i
+     * dati non sono risolvibili (il Boundary salta la notifica). Attraversa il
+     * confine solo una String: nessuna Entity né oggetto di trasferimento.
      */
     public static String messaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
                                                         LocalDate data, long[] idServizi, int[] quantita) {
@@ -1142,9 +1114,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Corpo (testo) della notifica di annullamento per la prenotazione indicata, se
-     * appartiene al cliente. Il Boundary lo richiede dopo l'esito OK e lo passa, col
-     * destinatario, al proprio Adapter. Null se non risolvibile/non di proprietà.
+     * Corpo (testo) della notifica di annullamento per la prenotazione indicata,
+     * se appartiene al cliente; null se non risolvibile o non di proprietà.
      */
     public static String messaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
         Cliente cliente = clientePerEmail(emailCliente);

@@ -3,18 +3,15 @@ package boundary.notifica;
 import notifica.CanaleComunicazioneEsterno;
 
 /*
- * AdapterServizioNotifica è l'Adapter del pattern omonimo, collocato nel Boundary
- * (BCED): è la classe che gestisce l'interazione del sistema con il Servizio di
- * Notifica esterno. Adatta un CanaleComunicazioneEsterno (adaptee, COTS nel package
- * `notifica`) alle notifiche dell'applicazione.
+ * AdapterServizioNotifica è l'Adapter (pattern omonimo) collocato nel Boundary
+ * (BCED): gestisce l'interazione con il Servizio di Notifica esterno, adattando
+ * il CanaleComunicazioneEsterno (adaptee, COTS nel package `notifica`) alle
+ * notifiche dell'applicazione.
  *
- * È invocato dal Boundary (i form) quando questo riceve la conferma dell'operazione
- * (prenotazione effettuata o annullata): riceve il destinatario e il corpo del
- * messaggio (testo già composto dal Controller, che dispone dei dati di dominio),
- * vi aggiunge l'oggetto specifico dell'evento e traduce il tutto nella chiamata
- * invia(destinatario, oggetto, corpo) del canale.
- *
- * Dipendenze: Boundary -> canale esterno (COTS). Riceve solo primitivi (String):
+ * I form lo invocano alla conferma dell'operazione (prenotazione effettuata o
+ * annullata) passando destinatario e corpo del messaggio (testo composto dal
+ * Controller); l'Adapter aggiunge l'oggetto dell'evento e traduce il tutto nella
+ * chiamata invia(destinatario, oggetto, corpo) del canale. Riceve solo String:
  * nessuna Entity, nessun oggetto di trasferimento dedicato.
  */
 public class AdapterServizioNotifica {
