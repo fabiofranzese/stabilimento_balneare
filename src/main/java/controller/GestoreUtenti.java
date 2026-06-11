@@ -40,14 +40,14 @@ public class GestoreUtenti {
     public static int registra(String nome, String cognome, String email,
                                String telefono, String password) {
 
-        if (!validaDati(nome, cognome, email, telefono, password)) {
+        if (!isDatiValidi(nome, cognome, email, telefono, password)) {
             return DATI_NON_VALIDI;
         }
 
         RegistroUtenti registroUtenti = new RegistroUtenti();
 
         // Se l'email esiste già, il flusso prevede di indirizzare l'utente all'accesso.
-        if (registroUtenti.emailEsistente(email)) {
+        if (registroUtenti.isEmailEsistente(email)) {
             return EMAIL_GIA_REGISTRATA;
         }
 
@@ -92,30 +92,30 @@ public class GestoreUtenti {
      * del diagramma di sequenza). Tutti i campi devono essere non vuoti, l'email
      * ben formata e la password di lunghezza minima.
      */
-    private static boolean validaDati(String nome, String cognome, String email,
-                                      String telefono, String password) {
+    private static boolean isDatiValidi(String nome, String cognome, String email,
+                                        String telefono, String password) {
 
-        if (campoVuoto(nome) || campoVuoto(cognome) || campoVuoto(email)
-                || campoVuoto(telefono) || campoVuoto(password)) {
+        if (isCampoVuoto(nome) || isCampoVuoto(cognome) || isCampoVuoto(email)
+                || isCampoVuoto(telefono) || isCampoVuoto(password)) {
             return false;
         }
 
-        if (!emailFormatoValido(email)) {
+        if (!isEmailFormatoValido(email)) {
             return false;
         }
 
-        if (!telefonoValido(telefono)) {
+        if (!isTelefonoValido(telefono)) {
             return false;
         }
 
-        if (!passwordValida(password)) {
+        if (!isPasswordValida(password)) {
             return false;
         }
 
         return true;
     }
 
-    private static boolean campoVuoto(String valore) {
+    private static boolean isCampoVuoto(String valore) {
         return valore == null || valore.trim().isEmpty();
     }
 
@@ -123,18 +123,18 @@ public class GestoreUtenti {
      * Controllo essenziale del formato dell'email: presenza di una sola @,
      * con testo prima e un dominio con punto dopo.
      */
-    private static boolean emailFormatoValido(String email) {
+    private static boolean isEmailFormatoValido(String email) {
         return email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     }
 
     /*
      * Il recapito telefonico deve contenere solo cifre (una o più).
      */
-    private static boolean telefonoValido(String telefono) {
+    private static boolean isTelefonoValido(String telefono) {
         return telefono.matches("\\d+");
     }
 
-    private static boolean passwordValida(String password) {
+    private static boolean isPasswordValida(String password) {
         return password.length() >= LUNGHEZZA_MINIMA_PASSWORD;
     }
 }

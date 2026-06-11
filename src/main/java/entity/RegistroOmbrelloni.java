@@ -32,15 +32,15 @@ public class RegistroOmbrelloni {
      * rigenerata. Per ogni fila i (numerata i+1, con ombrelloniPerFila[i]
      * ombrelloni numerati 1..N) si crea la FilaOmbrelloni; il salvataggio propaga
      * (cascade) agli ombrelloni. La posizione (prima/intermedia/ultima) non è
-     * scelta dal gestore: è derivata dall'ordine tramite TipoFila.perPosizione,
-     * così l'ordinamento dal mare verso l'interno non può essere incoerente.
+     * scelta dal gestore: arriva già derivata dall'ordine nell'array parallelo
+     * tipiFile (vedi GestoreStabilimento.tipoFilaPerPosizione).
      */
-    public void configuraDisposizione(int[] ombrelloniPerFila) {
+    public void configuraDisposizione(TipoFila[] tipiFile, int[] ombrelloniPerFila) {
         eliminaTutteLeFile();
 
         int totale = ombrelloniPerFila.length;
         for (int i = 0; i < totale; i++) {
-            FilaOmbrelloni fila = new FilaOmbrelloni(i + 1, TipoFila.perPosizione(i, totale));
+            FilaOmbrelloni fila = new FilaOmbrelloni(i + 1, tipiFile[i]);
 
             for (int numero = 1; numero <= ombrelloniPerFila[i]; numero++) {
                 fila.creaOmbrellone(numero);

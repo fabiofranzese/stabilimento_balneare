@@ -33,7 +33,7 @@ public class RegistroUtenti {
      * Restituisce il Cliente salvato, oppure null se il salvataggio fallisce.
      *
      * Il controllo di unicità dell'email è responsabilità del chiamante
-     * (vedi emailEsistente): qui ci si limita alla creazione.
+     * (vedi isEmailEsistente): qui ci si limita alla creazione.
      */
     public Cliente registraCliente(String nome, String cognome, String email,
                                    String telefono, String passwordInChiaro) {
@@ -70,7 +70,7 @@ public class RegistroUtenti {
     /*
      * Verifica se esiste già un Utente registrato con l'email indicata.
      */
-    public boolean emailEsistente(String email) {
+    public boolean isEmailEsistente(String email) {
         return cercaUtentePerEmail(email) != null;
     }
 

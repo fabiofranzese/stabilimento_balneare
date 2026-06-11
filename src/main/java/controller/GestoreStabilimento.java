@@ -74,18 +74,33 @@ public class GestoreStabilimento {
 
     /*
      * Etichette in italiano della posizione di ogni fila, derivate dall'ordine
-     * (TipoFila.perPosizione: prima/intermedia/ultima). Il Boundary le usa per
-     * mostrare la posizione assegnata dal sistema, aggiornata a ogni
-     * aggiunta/rimozione di una fila; la regola resta nel dominio (TipoFila).
+     * (prima/intermedia/ultima). Il Boundary le usa per mostrare la posizione
+     * assegnata dal sistema, aggiornata a ogni aggiunta/rimozione di una fila.
      */
-    public static String[] etichettePosizioniFile(int numeroFile) {
+    public static String[] getEtichettePosizioniFile(int numeroFile) {
         String[] etichette = new String[Math.max(0, numeroFile)];
 
         for (int i = 0; i < etichette.length; i++) {
-            etichette[i] = TipoFila.perPosizione(i, numeroFile).getEtichetta();
+            etichette[i] = tipoFilaPerPosizione(i, numeroFile).getEtichetta();
         }
 
         return etichette;
+    }
+
+    /*
+     * Regola di derivazione della posizione: la posizione di una fila dipende
+     * dal suo ordine nello stabilimento, non è scelta dal gestore. La prima è
+     * PRIMA_FILA (anche se è l'unica: il primo controllo vince), l'ultima è
+     * ULTIMA_FILA, quelle in mezzo FILA_INTERMEDIA.
+     */
+    private static TipoFila tipoFilaPerPosizione(int indice, int totale) {
+        if (indice <= 0) {
+            return TipoFila.PRIMA_FILA;
+        }
+        if (indice >= totale - 1) {
+            return TipoFila.ULTIMA_FILA;
+        }
+        return TipoFila.FILA_INTERMEDIA;
     }
 
     /*
@@ -94,24 +109,31 @@ public class GestoreStabilimento {
      * Riceve la disposizione (per ogni fila: numero di ombrelloni) e i servizi
      * aggiuntivi (descrizione + capacità, array paralleli). Valida i dati, poi
      * rigenera disposizione e servizi (strategia "replace"). La posizione delle
-     * file non è scelta dal gestore: è derivata dall'ordine in RegistroOmbrelloni.
+     * file non è scelta dal gestore: è derivata qui dall'ordine
+     * (tipoFilaPerPosizione) e passata al RegistroOmbrelloni.
      */
     public static int salvaConfigurazione(int[] ombrelloniPerFila,
                                           String[] descrizioniServizi, int[] capacitaServizi) {
 
-        if (!datiValidi(ombrelloniPerFila, descrizioniServizi, capacitaServizi)) {
+        if (!isDatiValidi(ombrelloniPerFila, descrizioniServizi, capacitaServizi)) {
             return DATI_NON_VALIDI;
         }
 
         // Precondizione: la riconfigurazione è distruttiva (sostituisce file e
         // servizi), quindi è bloccata se esiste anche una sola prenotazione attiva
         // che ne riferisce postazioni o servizi.
-        if (new RegistroPrenotazioni().esistonoPrenotazioniAttive()) {
+        if (new RegistroPrenotazioni().isPrenotazioniAttivePresenti()) {
             return PRENOTAZIONI_PRESENTI;
         }
 
+        // Posizione di ciascuna fila, derivata dall'ordine.
+        TipoFila[] tipiFile = new TipoFila[ombrelloniPerFila.length];
+        for (int i = 0; i < tipiFile.length; i++) {
+            tipiFile[i] = tipoFilaPerPosizione(i, tipiFile.length);
+        }
+
         try {
-            new RegistroOmbrelloni().configuraDisposizione(ombrelloniPerFila);
+            new RegistroOmbrelloni().configuraDisposizione(tipiFile, ombrelloniPerFila);
             new RegistroServiziAggiuntivi().sostituisciServizi(descrizioniServizi, capacitaServizi);
 
             return CONFIGURAZIONE_OK;
@@ -123,48 +145,31 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Indica se esiste almeno una prenotazione attiva: il Boundary usa questa
-     * precondizione per non aprire nemmeno la configurazione (distruttiva)
-     * quando ci sono prenotazioni attive.
+     * Lettura della configurazione corrente, per precaricare il form in un'unica
+     * chiamata. Si restituiscono solo tipi primitivi/array (nessuna Entity verso
+     * il Boundary): tre righe di String[], di lunghezza indipendente:
+     *   [0] numero di ombrelloni di ciascuna fila (interi come stringhe);
+     *   [1] descrizioni dei servizi aggiuntivi;
+     *   [2] capacità dei servizi aggiuntivi (interi come stringhe, parallela a [1]).
      */
-    public static boolean prenotazioniAttivePresenti() {
-        return new RegistroPrenotazioni().esistonoPrenotazioniAttive();
-    }
-
-    // --- Lettura della configurazione corrente (per precaricare il form) ---
-    // Si restituiscono solo tipi primitivi/array: nessuna Entity verso il Boundary.
-
-    public static int[] ombrelloniPerFilaCorrenti() {
+    public static String[][] getConfigurazioneCorrente() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
-        int[] conteggi = new int[file.size()];
+        String[] conteggi = new String[file.size()];
 
         for (int i = 0; i < file.size(); i++) {
-            conteggi[i] = file.get(i).getOmbrelloni().size();
+            conteggi[i] = String.valueOf(file.get(i).getOmbrelloni().size());
         }
 
-        return conteggi;
-    }
-
-    public static String[] descrizioniServiziCorrenti() {
         List<ServizioAggiuntivo> servizi = new RegistroServiziAggiuntivi().getServizi();
         String[] descrizioni = new String[servizi.size()];
+        String[] capacita = new String[servizi.size()];
 
         for (int i = 0; i < servizi.size(); i++) {
             descrizioni[i] = servizi.get(i).getDescrizione();
+            capacita[i] = String.valueOf(servizi.get(i).getCapacita());
         }
 
-        return descrizioni;
-    }
-
-    public static int[] capacitaServiziCorrenti() {
-        List<ServizioAggiuntivo> servizi = new RegistroServiziAggiuntivi().getServizi();
-        int[] capacita = new int[servizi.size()];
-
-        for (int i = 0; i < servizi.size(); i++) {
-            capacita[i] = servizi.get(i).getCapacita();
-        }
-
-        return capacita;
+        return new String[][]{conteggi, descrizioni, capacita};
     }
 
     /*
@@ -172,8 +177,8 @@ public class GestoreStabilimento {
      * ombrellone; array dei servizi coerenti in lunghezza, descrizioni non vuote,
      * capacità non negative.
      */
-    private static boolean datiValidi(int[] ombrelloniPerFila,
-                                      String[] descrizioniServizi, int[] capacitaServizi) {
+    private static boolean isDatiValidi(int[] ombrelloniPerFila,
+                                        String[] descrizioniServizi, int[] capacitaServizi) {
 
         if (ombrelloniPerFila == null
                 || descrizioniServizi == null || capacitaServizi == null) {
@@ -213,7 +218,7 @@ public class GestoreStabilimento {
      * popolano la combo del form (l'indice scelto corrisponde a
      * Stagione.values()[indice]).
      */
-    public static String[] stagioni() {
+    public static String[] getStagioni() {
         Stagione[] valori = Stagione.values();
         String[] etichette = new String[valori.length];
 
@@ -225,10 +230,19 @@ public class GestoreStabilimento {
     }
 
     /*
+     * Stagione in cui cade una data. Regola semplice (facilmente modificabile in
+     * un unico punto): da giugno a settembre è alta stagione, altrimenti bassa.
+     */
+    private static Stagione stagionePerData(LocalDate data) {
+        int mese = data.getMonthValue();
+        return (mese >= 6 && mese <= 9) ? Stagione.ALTA : Stagione.BASSA;
+    }
+
+    /*
      * Indica se lo stabilimento è già stato configurato (esiste almeno una fila):
      * senza file non ci sono postazioni da tariffare.
      */
-    public static boolean configurazioneEffettuata() {
+    public static boolean isConfigurazioneEffettuata() {
         return !new RegistroOmbrelloni().getFile().isEmpty();
     }
 
@@ -238,7 +252,7 @@ public class GestoreStabilimento {
      * L'indice scelto identifica l'elemento: 0..numTipi-1 i tipi di fila, da
      * numTipi in poi i servizi.
      */
-    public static String[] elementiTariffa() {
+    public static String[] getElementiTariffa() {
         List<TipoFila> tipi = tipiFilaConfigurati();
         List<ServizioAggiuntivo> servizi = serviziOrdinati();
 
@@ -267,7 +281,7 @@ public class GestoreStabilimento {
         List<ServizioAggiuntivo> servizi = serviziOrdinati();
         int numTipi = tipi.size();
 
-        if (!datiTariffeValidi(elementiIndici, stagioniIndici, costi, numTipi + servizi.size())) {
+        if (!isDatiTariffeValidi(elementiIndici, stagioniIndici, costi, numTipi + servizi.size())) {
             return TARIFFA_NON_VALIDA;
         }
 
@@ -343,49 +357,13 @@ public class GestoreStabilimento {
         return elemento + ":" + stagioneOrdinale;
     }
 
-    // --- Lettura delle tariffe correnti (per precaricare il form) ---
-    // I tre metodi restituiscono array paralleli, allineati dallo stesso ordine.
-
-    public static int[] elementiTariffeCorrenti() {
-        List<double[]> righe = righeTariffe();
-        int[] elementi = new int[righe.size()];
-
-        for (int i = 0; i < righe.size(); i++) {
-            elementi[i] = (int) righe.get(i)[0];
-        }
-
-        return elementi;
-    }
-
-    public static int[] stagioniTariffeCorrenti() {
-        List<double[]> righe = righeTariffe();
-        int[] stagioni = new int[righe.size()];
-
-        for (int i = 0; i < righe.size(); i++) {
-            stagioni[i] = (int) righe.get(i)[1];
-        }
-
-        return stagioni;
-    }
-
-    public static double[] costiTariffeCorrenti() {
-        List<double[]> righe = righeTariffe();
-        double[] costi = new double[righe.size()];
-
-        for (int i = 0; i < righe.size(); i++) {
-            costi[i] = righe.get(i)[2];
-        }
-
-        return costi;
-    }
-
     /*
      * Validazione delle tariffe: array coerenti in lunghezza, indici validi,
      * costi strettamente positivi (dal flusso: tariffa <= 0 è un errore). Una
      * lista vuota è valida: significa "elimina tutte le tariffe".
      */
-    private static boolean datiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
-                                             double[] costi, int numeroElementi) {
+    private static boolean isDatiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
+                                               double[] costi, int numeroElementi) {
 
         if (elementiIndici == null || stagioniIndici == null || costi == null) {
             return false;
@@ -413,11 +391,13 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Righe delle tariffe correnti come array {elemento, stagione, costo}, in
-     * ordine deterministico: così i tre metodi di lettura restituiscono array
-     * paralleli allineati anche se le query cambiano ordine.
+     * Lettura delle tariffe correnti, per precaricare il form in un'unica
+     * chiamata: una riga per tariffa, come array {elemento, stagione, costo}
+     * (i primi due sono indici, da riconvertire in int), in ordine
+     * deterministico anche se le query cambiano ordine. Solo tipi
+     * primitivi/array verso il Boundary.
      */
-    private static List<double[]> righeTariffe() {
+    public static double[][] getTariffeCorrenti() {
         List<TipoFila> tipi = tipiFilaConfigurati();
         int numTipi = tipi.size();
         List<ServizioAggiuntivo> servizi = serviziOrdinati();
@@ -448,7 +428,7 @@ public class GestoreStabilimento {
                 ? Double.compare(a[0], b[0])
                 : Double.compare(a[1], b[1]));
 
-        return righe;
+        return righe.toArray(new double[0][]);
     }
 
     /*
@@ -503,7 +483,7 @@ public class GestoreStabilimento {
      * Etichette delle file: "Fila N". La posizione non è mostrata: è suggerita
      * dall'ordine delle file rispetto al mare.
      */
-    public static String[] etichetteFile() {
+    public static String[] getEtichetteFile() {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
         String[] etichette = new String[file.size()];
 
@@ -515,60 +495,30 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Numeri degli ombrelloni, per fila (array 2D irregolare).
+     * Mappa degli ombrelloni per la data scelta, in un'unica chiamata: per ogni
+     * fila (stesso ordine di getEtichetteFile), per ogni ombrellone, la terna
+     * {numero, id, disponibile} (disponibile: 1 = libero, 0 = occupato; dato
+     * derivato dalle prenotazioni attive). L'id identifica l'ombrellone
+     * selezionato sulla mappa per avviarne la prenotazione.
      */
-    public static int[][] numeriOmbrelloniPerFila() {
-        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
-        int[][] numeri = new int[file.size()][];
-
-        for (int i = 0; i < file.size(); i++) {
-            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
-            numeri[i] = new int[ombrelloni.size()];
-            for (int j = 0; j < ombrelloni.size(); j++) {
-                numeri[i][j] = ombrelloni.get(j).getNumero();
-            }
-        }
-
-        return numeri;
-    }
-
-    /*
-     * Id degli ombrelloni, per fila: identificano l'ombrellone selezionato sulla
-     * mappa per avviarne la prenotazione.
-     */
-    public static long[][] idOmbrelloniPerFila() {
-        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
-        long[][] identificativi = new long[file.size()][];
-
-        for (int i = 0; i < file.size(); i++) {
-            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
-            identificativi[i] = new long[ombrelloni.size()];
-            for (int j = 0; j < ombrelloni.size(); j++) {
-                identificativi[i][j] = ombrelloni.get(j).getId();
-            }
-        }
-
-        return identificativi;
-    }
-
-    /*
-     * Disponibilità degli ombrelloni in una data, per fila: true = libero
-     * (dato derivato dalle prenotazioni attive).
-     */
-    public static boolean[][] disponibilitaPerFila(LocalDate data) {
+    public static long[][][] getMappaOmbrelloni(LocalDate data) {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-        boolean[][] disponibili = new boolean[file.size()][];
+        long[][][] mappa = new long[file.size()][][];
 
         for (int i = 0; i < file.size(); i++) {
             List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
-            disponibili[i] = new boolean[ombrelloni.size()];
+            mappa[i] = new long[ombrelloni.size()][];
             for (int j = 0; j < ombrelloni.size(); j++) {
-                disponibili[i][j] = !registroPrenotazioni.isOmbrelloneOccupato(ombrelloni.get(j), data);
+                Ombrellone ombrellone = ombrelloni.get(j);
+                mappa[i][j] = new long[]{
+                        ombrellone.getNumero(),
+                        ombrellone.getId(),
+                        registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data) ? 0 : 1};
             }
         }
 
-        return disponibili;
+        return mappa;
     }
 
     /*
@@ -576,14 +526,14 @@ public class GestoreStabilimento {
      * (condiviso da tutti gli ombrelloni della fila); -1 se la tariffa non è
      * definita.
      */
-    public static double prezzoFila(int indiceFila, LocalDate data) {
+    public static double getPrezzoFila(int indiceFila, LocalDate data) {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
         if (indiceFila < 0 || indiceFila >= file.size()) {
             return -1;
         }
 
         TipoFila tipo = file.get(indiceFila).getTipoFila();
-        Stagione stagione = Stagione.perData(data);
+        Stagione stagione = stagionePerData(data);
 
         for (TariffaTipoFila tariffa : new RegistroTariffe().getTariffeTipoFila()) {
             if (tariffa.getTipoFila() == tipo && tariffa.getStagione() == stagione) {
@@ -597,8 +547,8 @@ public class GestoreStabilimento {
     /*
      * Nome della stagione in cui cade la data scelta (per la GUI).
      */
-    public static String nomeStagione(LocalDate data) {
-        return Stagione.perData(data).getEtichetta();
+    public static String getNomeStagione(LocalDate data) {
+        return stagionePerData(data).getEtichetta();
     }
 
     /*
@@ -623,8 +573,7 @@ public class GestoreStabilimento {
     // Operazioni del caso d'uso Effettua Prenotazione (estensione di
     // Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e
     // servizi con valori semplici (email, id): nessuna Entity attraversa il
-    // confine B/C. I metodi di lettura sui servizi restituiscono array paralleli,
-    // allineati dall'ordine stabile di serviziSelezionabili(data).
+    // confine B/C.
 
     /*
      * Servizi che il cliente può prenotare per la data scelta: quelli con
@@ -633,7 +582,7 @@ public class GestoreStabilimento {
      */
     private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-        Stagione stagione = Stagione.perData(data);
+        Stagione stagione = stagionePerData(data);
         List<ServizioAggiuntivo> selezionabili = new ArrayList<>();
 
         for (ServizioAggiuntivo servizio : serviziOrdinati()) {
@@ -648,77 +597,44 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Descrizioni dei servizi prenotabili per la data.
+     * Servizi prenotabili per la data, in un'unica chiamata: una riga per
+     * servizio, {descrizione, id, residuo, prezzo unitario} (i valori numerici
+     * come stringhe). Il residuo è la quantità massima ordinabile (dato derivato
+     * dalle prenotazioni attive), il prezzo è quello della stagione della data;
+     * l'id identifica il servizio scelto nella prenotazione. Solo tipi
+     * primitivi/array verso il Boundary.
      */
-    public static String[] descrizioniServizi(LocalDate data) {
-        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
-        String[] descrizioni = new String[servizi.size()];
-
-        for (int i = 0; i < servizi.size(); i++) {
-            descrizioni[i] = servizi.get(i).getDescrizione();
-        }
-
-        return descrizioni;
-    }
-
-    /*
-     * Id dei servizi prenotabili per la data: identificano il servizio scelto
-     * nella prenotazione.
-     */
-    public static long[] idServizi(LocalDate data) {
-        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
-        long[] identificativi = new long[servizi.size()];
-
-        for (int i = 0; i < servizi.size(); i++) {
-            identificativi[i] = servizi.get(i).getId();
-        }
-
-        return identificativi;
-    }
-
-    /*
-     * Disponibilità residua di ciascun servizio prenotabile per la data: è la
-     * quantità massima ordinabile (dato derivato dalle prenotazioni attive).
-     */
-    public static int[] residuoServizi(LocalDate data) {
+    public static String[][] getServiziPrenotabili(LocalDate data) {
         List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-        int[] residui = new int[servizi.size()];
+        Stagione stagione = stagionePerData(data);
+        String[][] righe = new String[servizi.size()][];
 
         for (int i = 0; i < servizi.size(); i++) {
-            residui[i] = registroPrenotazioni.residuoServizio(servizi.get(i), data);
+            ServizioAggiuntivo servizio = servizi.get(i);
+            righe[i] = new String[]{
+                    servizio.getDescrizione(),
+                    String.valueOf(servizio.getId()),
+                    String.valueOf(registroPrenotazioni.residuoServizio(servizio, data)),
+                    String.valueOf(costoServizio(servizio, stagione))};
         }
 
-        return residui;
-    }
-
-    /*
-     * Prezzo unitario di ciascun servizio prenotabile per la stagione della data.
-     */
-    public static double[] prezziServizi(LocalDate data) {
-        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
-        Stagione stagione = Stagione.perData(data);
-        double[] prezzi = new double[servizi.size()];
-
-        for (int i = 0; i < servizi.size(); i++) {
-            prezzi[i] = costoServizio(servizi.get(i), stagione);
-        }
-
-        return prezzi;
+        return righe;
     }
 
     /*
      * Prezzo dell'ombrellone (dal tipo della sua fila) per la stagione della
-     * data; -1 se la tariffa non è definita o l'ombrellone non esiste.
+     * data; -1 se la tariffa non è definita o l'ombrellone non esiste. Il
+     * Boundary lo ottiene tramite getPrezzoTotale (senza servizi).
      */
-    public static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
+    private static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
         Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
 
         if (ombrellone == null || ombrellone.getFila() == null) {
             return -1;
         }
 
-        return costoTipoFila(ombrellone.getFila().getTipoFila(), Stagione.perData(data));
+        return costoTipoFila(ombrellone.getFila().getTipoFila(), stagionePerData(data));
     }
 
     /*
@@ -726,13 +642,13 @@ public class GestoreStabilimento {
      * quantità (array paralleli), alla stagione della data. Le tariffe non
      * definite (-1) non incidono sul totale.
      */
-    public static double prezzoTotale(long idOmbrellone, long[] idServiziScelti,
+    public static double getPrezzoTotale(long idOmbrellone, long[] idServiziScelti,
                                       int[] quantita, LocalDate data) {
         double totale = Math.max(0, prezzoOmbrellone(idOmbrellone, data));
 
         if (idServiziScelti != null && quantita != null
                 && idServiziScelti.length == quantita.length) {
-            Stagione stagione = Stagione.perData(data);
+            Stagione stagione = stagionePerData(data);
             for (int i = 0; i < idServiziScelti.length; i++) {
                 if (quantita[i] <= 0) {
                     continue;
@@ -793,7 +709,7 @@ public class GestoreStabilimento {
         }
 
         // Prezzo "congelato" al momento della prenotazione, alle tariffe vigenti.
-        double totale = prezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
+        double totale = getPrezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
 
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
 
@@ -814,7 +730,7 @@ public class GestoreStabilimento {
             }
 
             // La notifica è innescata dal Boundary alla conferma (vedi
-            // messaggioNotificaPrenotazione): qui si restituisce solo l'esito.
+            // getMessaggioNotificaPrenotazione): qui si restituisce solo l'esito.
             return PRENOTAZIONE_OK;
 
         } catch (RuntimeException e) {
@@ -855,114 +771,47 @@ public class GestoreStabilimento {
     // Operazioni del caso d'uso Gestione prenotazioni personali (attore
     // ClienteAutenticato): consultazione dello storico e annullamento entro il
     // limite temporale. Il Boundary identifica il cliente con l'email e la
-    // prenotazione con il suo id. I metodi di lettura restituiscono array
-    // paralleli, allineati dall'ordinamento stabile di prenotazioniOrdinate:
-    // l'elenco mostra la data, i campi di dettaglio riguardano la prenotazione
-    // selezionata.
+    // prenotazione con il suo id.
 
     /*
-     * Date delle prenotazioni del cliente (una voce per prenotazione).
-     */
-    public static String[] datePrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        String[] date = new String[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            LocalDate data = prenotazioni.get(i).getData();
-            date[i] = (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "";
-        }
-
-        return date;
-    }
-
-    /*
-     * Postazione scelta di ciascuna prenotazione ("Ombrellone n. X (Fila Y)").
-     */
-    public static String[] postazioniPrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        String[] postazioni = new String[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            postazioni[i] = descriviPostazione(prenotazioni.get(i));
-        }
-
-        return postazioni;
-    }
-
-    /*
-     * Servizi aggiuntivi (con quantità) di ciascuna prenotazione, "nessuno" se
-     * non ce ne sono.
-     */
-    public static String[] serviziPrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        String[] servizi = new String[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            String descrizione = descriviServizi(prenotazioni.get(i));
-            servizi[i] = descrizione.isEmpty() ? "nessuno" : descrizione;
-        }
-
-        return servizi;
-    }
-
-    /*
-     * Stato di ciascuna prenotazione ("Prenotata"/"Annullata").
-     */
-    public static String[] statiPrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        String[] stati = new String[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            StatoPrenotazione stato = prenotazioni.get(i).getStato();
-            stati[i] = (stato != null) ? stato.nome() : "";
-        }
-
-        return stati;
-    }
-
-    /*
-     * Prezzo totale "congelato" di ciascuna prenotazione.
-     */
-    public static double[] prezziPrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        double[] prezzi = new double[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            prezzi[i] = prenotazioni.get(i).getPrezzoTotale();
-        }
-
-        return prezzi;
-    }
-
-    /*
-     * Id delle prenotazioni del cliente: identificano la prenotazione selezionata
-     * per l'annullamento.
-     */
-    public static long[] idPrenotazioniCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        long[] identificativi = new long[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            identificativi[i] = prenotazioni.get(i).getId();
-        }
-
-        return identificativi;
-    }
-
-    /*
-     * Per ogni prenotazione, indica se è annullabile oggi (stato Prenotata e
+     * Storico del cliente in un'unica chiamata: una riga per prenotazione,
+     * {data, postazione, servizi, stato, prezzo, id, annullabile} (i valori non
+     * testuali come stringhe), in ordine deterministico (per data, poi per id).
+     * "annullabile" indica se l'annullamento è possibile oggi (stato Prenotata e
      * oggi < data): il Boundary la usa per abilitare/disabilitare l'annullamento.
+     * Vuoto se l'email non corrisponde a un cliente. Solo tipi primitivi/array
+     * verso il Boundary.
      */
-    public static boolean[] annullabiliCliente(String emailCliente) {
-        List<Prenotazione> prenotazioni = prenotazioniOrdinate(emailCliente);
-        LocalDate oggi = LocalDate.now();
-        boolean[] annullabili = new boolean[prenotazioni.size()];
-
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            annullabili[i] = prenotazioni.get(i).isAnnullabile(oggi);
+    public static String[][] getPrenotazioniCliente(String emailCliente) {
+        Cliente cliente = clientePerEmail(emailCliente);
+        if (cliente == null) {
+            return new String[0][];
         }
 
-        return annullabili;
+        List<Prenotazione> prenotazioni = new RegistroPrenotazioni().prenotazioniCliente(cliente);
+        prenotazioni.sort(Comparator.comparing(Prenotazione::getData)
+                .thenComparing(Prenotazione::getId));
+
+        LocalDate oggi = LocalDate.now();
+        String[][] righe = new String[prenotazioni.size()][];
+
+        for (int i = 0; i < prenotazioni.size(); i++) {
+            Prenotazione prenotazione = prenotazioni.get(i);
+            LocalDate data = prenotazione.getData();
+            String servizi = descriviServizi(prenotazione);
+            StatoPrenotazione stato = prenotazione.getStato();
+
+            righe[i] = new String[]{
+                    (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "",
+                    descriviPostazione(prenotazione),
+                    servizi.isEmpty() ? "nessuno" : servizi,
+                    (stato != null) ? stato.nome() : "",
+                    String.valueOf(prenotazione.getPrezzoTotale()),
+                    String.valueOf(prenotazione.getId()),
+                    String.valueOf(prenotazione.isAnnullabile(oggi))};
+        }
+
+        return righe;
     }
 
     /*
@@ -1000,30 +849,13 @@ public class GestoreStabilimento {
             new RegistroPrenotazioni().annullaPrenotazione(prenotazione);
 
             // La notifica è innescata dal Boundary alla conferma (vedi
-            // messaggioNotificaAnnullamento): qui si restituisce solo l'esito.
+            // getMessaggioNotificaAnnullamento): qui si restituisce solo l'esito.
             return ANNULLAMENTO_OK;
 
         } catch (RuntimeException e) {
             e.printStackTrace();
             return ERRORE_ANNULLAMENTO;
         }
-    }
-
-    /*
-     * Prenotazioni del cliente in ordine deterministico (per data, poi per id):
-     * l'ordine stabile su cui si allineano gli array di lettura. Lista vuota se
-     * l'email non corrisponde a un cliente.
-     */
-    private static List<Prenotazione> prenotazioniOrdinate(String emailCliente) {
-        Cliente cliente = clientePerEmail(emailCliente);
-        if (cliente == null) {
-            return new ArrayList<>();
-        }
-
-        List<Prenotazione> prenotazioni = new RegistroPrenotazioni().prenotazioniCliente(cliente);
-        prenotazioni.sort(Comparator.comparing(Prenotazione::getData)
-                .thenComparing(Prenotazione::getId));
-        return prenotazioni;
     }
 
     /*
@@ -1084,7 +916,7 @@ public class GestoreStabilimento {
      * dati non sono risolvibili (il Boundary salta la notifica). Attraversa il
      * confine solo una String: nessuna Entity né oggetto di trasferimento.
      */
-    public static String messaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
+    public static String getMessaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
                                                         LocalDate data, long[] idServizi, int[] quantita) {
         Cliente cliente = clientePerEmail(emailCliente);
         Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
@@ -1107,7 +939,7 @@ public class GestoreStabilimento {
             }
         }
 
-        double totale = prezzoTotale(idOmbrellone, idServizi, quantita, data);
+        double totale = getPrezzoTotale(idOmbrellone, idServizi, quantita, data);
         Prenotazione prenotazione = new Prenotazione(data, ombrellone, null, cliente,
                 quantitaServizi, null, totale);
         return componiCorpoConferma(prenotazione);
@@ -1117,7 +949,7 @@ public class GestoreStabilimento {
      * Corpo (testo) della notifica di annullamento per la prenotazione indicata,
      * se appartiene al cliente; null se non risolvibile o non di proprietà.
      */
-    public static String messaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
+    public static String getMessaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
         Cliente cliente = clientePerEmail(emailCliente);
         if (cliente == null) {
             return null;

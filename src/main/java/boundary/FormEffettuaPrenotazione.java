@@ -94,7 +94,8 @@ public class FormEffettuaPrenotazione {
         etichettaRiepilogoFila.setText(etichettaFila != null ? etichettaFila : "");
         etichettaRiepilogoData.setText("Data: " + data.format(FORMATO_DATA));
 
-        double prezzoBase = GestoreStabilimento.prezzoOmbrellone(idOmbrellone, data);
+        // Prezzo del solo ombrellone: totale senza servizi.
+        double prezzoBase = GestoreStabilimento.getPrezzoTotale(idOmbrellone, null, null, data);
         etichettaPrezzoBase.setText("Prezzo ombrellone: " + formattaPrezzo(prezzoBase));
 
         costruisciServizi();
@@ -117,24 +118,28 @@ public class FormEffettuaPrenotazione {
         pannelloServizi.removeAll();
         spinnerServizi.clear();
 
-        String[] descrizioni = GestoreStabilimento.descrizioniServizi(data);
-        idServiziVisualizzati = GestoreStabilimento.idServizi(data);
-        int[] residui = GestoreStabilimento.residuoServizi(data);
-        double[] prezzi = GestoreStabilimento.prezziServizi(data);
+        // Una riga per servizio: {descrizione, id, residuo, prezzo unitario}
+        // (i valori numerici viaggiano come stringhe).
+        String[][] servizi = GestoreStabilimento.getServiziPrenotabili(data);
+        idServiziVisualizzati = new long[servizi.length];
 
-        if (descrizioni.length == 0) {
+        if (servizi.length == 0) {
             pannelloServizi.add(new JLabel("Nessun servizio aggiuntivo disponibile."));
         } else {
-            for (int i = 0; i < descrizioni.length; i++) {
+            for (int i = 0; i < servizi.length; i++) {
+                idServiziVisualizzati[i] = Long.parseLong(servizi[i][1]);
+                int residuo = Integer.parseInt(servizi[i][2]);
+                double prezzo = Double.parseDouble(servizi[i][3]);
+
                 JPanel riga = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
                 riga.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-                riga.add(new JLabel(descrizioni[i]
-                        + " — " + formattaPrezzo(prezzi[i])
-                        + "  (max: " + residui[i] + ")"));
+                riga.add(new JLabel(servizi[i][0]
+                        + " — " + formattaPrezzo(prezzo)
+                        + "  (max: " + residuo + ")"));
 
                 // Quantità ordinabile: da 0 (non scelto) fino al residuo disponibile.
-                JSpinner selettore = new JSpinner(new SpinnerNumberModel(0, 0, residui[i], 1));
+                JSpinner selettore = new JSpinner(new SpinnerNumberModel(0, 0, residuo, 1));
                 selettore.addChangeListener(e -> aggiornaTotale());
 
                 spinnerServizi.add(selettore);
@@ -152,7 +157,7 @@ public class FormEffettuaPrenotazione {
      * Ricalcola il totale (ombrellone + servizi per le quantità scelte) per la data.
      */
     private void aggiornaTotale() {
-        double totale = GestoreStabilimento.prezzoTotale(
+        double totale = GestoreStabilimento.getPrezzoTotale(
                 idOmbrellone, idServiziVisualizzati, quantitaCorrenti(), data);
         etichettaTotale.setText("Totale: " + String.format("€ %.2f", totale));
     }
@@ -171,7 +176,7 @@ public class FormEffettuaPrenotazione {
                 // Ricevuta la conferma, il Boundary innesca la notifica al sistema
                 // esterno: chiede al Controller il testo del messaggio e lo invia
                 // al destinatario (l'email del cliente autenticato) tramite l'Adapter.
-                String corpoNotifica = GestoreStabilimento.messaggioNotificaPrenotazione(
+                String corpoNotifica = GestoreStabilimento.getMessaggioNotificaPrenotazione(
                         emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
                 if (corpoNotifica != null) {
                     notificatore.prenotazioneEffettuata(emailCliente, corpoNotifica);

@@ -24,7 +24,7 @@ public final class DatiIniziali {
 
         String email = "gestore@stabilimento.it";
 
-        if (registroUtenti.emailEsistente(email)) {
+        if (registroUtenti.isEmailEsistente(email)) {
             return;
         }
 

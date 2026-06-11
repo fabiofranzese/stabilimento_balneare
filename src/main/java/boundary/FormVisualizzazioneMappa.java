@@ -126,10 +126,9 @@ public class FormVisualizzazioneMappa {
 
         pannelloMappa.removeAll();
 
-        String[] etichetteFile = GestoreStabilimento.etichetteFile();
-        int[][] numeri = GestoreStabilimento.numeriOmbrelloniPerFila();
-        long[][] identificativi = GestoreStabilimento.idOmbrelloniPerFila();
-        boolean[][] disponibili = GestoreStabilimento.disponibilitaPerFila(dataCorrente);
+        String[] etichetteFile = GestoreStabilimento.getEtichetteFile();
+        // Per ogni fila, per ogni ombrellone: {numero, id, disponibile (1 = libero)}.
+        long[][][] mappa = GestoreStabilimento.getMappaOmbrelloni(dataCorrente);
 
         if (etichetteFile.length == 0) {
             pannelloMappa.add(new JLabel("Nessuna postazione configurata."));
@@ -137,7 +136,7 @@ public class FormVisualizzazioneMappa {
             // Il mare è sul lato delle prime file: l'indicatore va in cima alla mappa.
             pannelloMappa.add(creaIndicatoreMare());
             for (int i = 0; i < etichetteFile.length; i++) {
-                pannelloMappa.add(creaRigaFila(i, etichetteFile[i], numeri[i], identificativi[i], disponibili[i]));
+                pannelloMappa.add(creaRigaFila(i, etichetteFile[i], mappa[i]));
             }
         }
 
@@ -166,8 +165,7 @@ public class FormVisualizzazioneMappa {
      * destra, largo quanto l'etichetta, bilancia quest'ultima così le celle
      * risultano centrate rispetto all'intera mappa.
      */
-    private JPanel creaRigaFila(int indiceFila, String etichettaFila,
-                                int[] numeri, long[] identificativi, boolean[] disponibili) {
+    private JPanel creaRigaFila(int indiceFila, String etichettaFila, long[][] ombrelloni) {
         JPanel riga = new JPanel(new BorderLayout());
         riga.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -177,10 +175,10 @@ public class FormVisualizzazioneMappa {
         riga.add(etichetta, BorderLayout.WEST);
 
         JPanel celle = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 4));
-        for (int j = 0; j < numeri.length; j++) {
-            final int numero = numeri[j];
-            final long id = identificativi[j];
-            final boolean disponibile = disponibili[j];
+        for (int j = 0; j < ombrelloni.length; j++) {
+            final int numero = (int) ombrelloni[j][0];
+            final long id = ombrelloni[j][1];
+            final boolean disponibile = ombrelloni[j][2] == 1;
 
             JButton cella = new JButton(String.valueOf(numero));
             cella.setPreferredSize(new Dimension(48, 36));
@@ -222,7 +220,7 @@ public class FormVisualizzazioneMappa {
             return;
         }
 
-        double prezzo = GestoreStabilimento.prezzoFila(indiceFila, dataCorrente);
+        double prezzo = GestoreStabilimento.getPrezzoFila(indiceFila, dataCorrente);
 
         if (prezzo < 0) {
             // Disponibile ma senza tariffa per la stagione: non si può prenotare.
@@ -233,7 +231,7 @@ public class FormVisualizzazioneMappa {
         }
 
         etichettaDisponibilita.setText("Stato: Disponibile");
-        etichettaPrezzo.setText("Prezzo (" + GestoreStabilimento.nomeStagione(dataCorrente)
+        etichettaPrezzo.setText("Prezzo (" + GestoreStabilimento.getNomeStagione(dataCorrente)
                 + "): " + String.format("€ %.2f", prezzo));
         ombrellonePrenotabile = true;
         bottonePrenota.setEnabled(true);

@@ -57,7 +57,7 @@ public class RegistroPrenotazioni {
      * stabilimento, che è distruttiva e non va eseguita finché esistono
      * prenotazioni che riferiscono ombrelloni e servizi.
      */
-    public boolean esistonoPrenotazioniAttive() {
+    public boolean isPrenotazioniAttivePresenti() {
         for (Prenotazione p : gestorePersistenza.cercaPerCampi(Prenotazione.class, Map.of())) {
             if (p.getStato() != null && p.getStato().isAttiva()) {
                 return true;

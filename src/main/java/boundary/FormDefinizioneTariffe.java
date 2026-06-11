@@ -44,8 +44,8 @@ public class FormDefinizioneTariffe {
 
     // Etichette degli elementi e delle stagioni (dal Controller), usate per le
     // combo e per l'elenco.
-    private final String[] etichetteElemento = GestoreStabilimento.elementiTariffa();
-    private final String[] etichetteStagione = GestoreStabilimento.stagioni();
+    private final String[] etichetteElemento = GestoreStabilimento.getElementiTariffa();
+    private final String[] etichetteStagione = GestoreStabilimento.getStagioni();
 
     // Stato in memoria delle tariffe in corso di definizione (array paralleli),
     // con al più una voce per ogni coppia (elemento, stagione).
@@ -178,14 +178,11 @@ public class FormDefinizioneTariffe {
     }
 
     private void precaricaTariffe() {
-        int[] elementiCorrenti = GestoreStabilimento.elementiTariffeCorrenti();
-        int[] stagioniCorrenti = GestoreStabilimento.stagioniTariffeCorrenti();
-        double[] costiCorrenti = GestoreStabilimento.costiTariffeCorrenti();
-
-        for (int i = 0; i < elementiCorrenti.length; i++) {
-            elementi.add(elementiCorrenti[i]);
-            stagioni.add(stagioniCorrenti[i]);
-            costi.add(costiCorrenti[i]);
+        // Una riga per tariffa: {elemento, stagione, costo} (i primi due sono indici).
+        for (double[] tariffa : GestoreStabilimento.getTariffeCorrenti()) {
+            elementi.add((int) tariffa[0]);
+            stagioni.add((int) tariffa[1]);
+            costi.add(tariffa[2]);
         }
         aggiornaListaTariffe();
     }

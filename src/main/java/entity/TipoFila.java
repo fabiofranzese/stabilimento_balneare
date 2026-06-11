@@ -8,8 +8,8 @@ package entity;
  * FilaIntermedia / UltimaFila); essendo un insieme chiuso di tre valori senza
  * comportamento, è realizzata come enum, più semplice da mappare con JPA
  * (@Enumerated su FilaOmbrelloni). L'etichetta in italiano è l'unica sorgente
- * dei testi mostrati nella GUI (vedi GestoreStabilimento.etichettePosizioniFile
- * ed elementiTariffa).
+ * dei testi mostrati nella GUI. La derivazione della posizione dall'ordine
+ * della fila è in GestoreStabilimento (tipoFilaPerPosizione).
  */
 public enum TipoFila {
 
@@ -25,21 +25,5 @@ public enum TipoFila {
 
     public String getEtichetta() {
         return etichetta;
-    }
-
-    /*
-     * Regola di dominio: la posizione di una fila è derivata dal suo ordine nello
-     * stabilimento, non scelta dal gestore. La prima è PRIMA_FILA (anche se è
-     * l'unica: il primo controllo vince), l'ultima è ULTIMA_FILA, quelle in mezzo
-     * FILA_INTERMEDIA.
-     */
-    public static TipoFila perPosizione(int indice, int totale) {
-        if (indice <= 0) {
-            return PRIMA_FILA;
-        }
-        if (indice >= totale - 1) {
-            return ULTIMA_FILA;
-        }
-        return FILA_INTERMEDIA;
     }
 }

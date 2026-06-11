@@ -30,9 +30,12 @@ public class FinestraGestore {
     public FinestraGestore() {
         // Apre il caso d'uso Configurazione stabilimento, nascondendo quest'area:
         // verrà rimostrata al termine (o all'annullamento) della configurazione.
-        // La riconfigurazione è distruttiva: se esistono prenotazioni attive non si
-        // apre nemmeno la schermata, si mostra subito l'errore.
-        bottoneConfiguraStabilimento.addActionListener(e -> apriConfigurazione());
+        // La riconfigurazione è distruttiva: se esistono prenotazioni attive il
+        // salvataggio viene rifiutato dal Controller e il form mostra l'errore.
+        bottoneConfiguraStabilimento.addActionListener(e -> {
+            frame.setVisible(false);
+            new FormConfigurazioneStabilimento(frame).apri();
+        });
 
         // Apre il caso d'uso Definizione tariffe, con la stessa logica.
         bottoneDefinisciTariffe.addActionListener(e -> {
@@ -70,31 +73,11 @@ public class FinestraGestore {
     }
 
     /*
-     * Apre la Configurazione stabilimento, ma solo se non ci sono prenotazioni
-     * attive: la riconfigurazione è distruttiva e ne rimuoverebbe le postazioni.
-     * In presenza di prenotazioni attive si mostra subito l'errore, senza aprire
-     * la schermata.
-     */
-    private void apriConfigurazione() {
-        if (GestoreStabilimento.prenotazioniAttivePresenti()) {
-            JOptionPane.showMessageDialog(frame,
-                    "Impossibile riconfigurare lo stabilimento: esistono prenotazioni attive.\n"
-                            + "La configurazione può essere modificata solo quando non ci sono "
-                            + "prenotazioni attive.",
-                    "Prenotazioni presenti", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        frame.setVisible(false);
-        new FormConfigurazioneStabilimento(frame).apri();
-    }
-
-    /*
      * La definizione tariffe ha senso solo a stabilimento configurato: il
      * pulsante è abilitato unicamente se la configurazione è stata effettuata.
      */
     private void aggiornaDisponibilitaTariffe() {
-        bottoneDefinisciTariffe.setEnabled(GestoreStabilimento.configurazioneEffettuata());
+        bottoneDefinisciTariffe.setEnabled(GestoreStabilimento.isConfigurazioneEffettuata());
     }
 
     private void tornaAllaSchermataPrincipale() {

@@ -124,7 +124,7 @@ public class FormConfigurazioneStabilimento {
      * aggiunta/rimozione, così le etichette restano coerenti.
      */
     private void aggiornaListaFile() {
-        String[] posizioni = GestoreStabilimento.etichettePosizioniFile(ombrelloniPerFila.size());
+        String[] posizioni = GestoreStabilimento.getEtichettePosizioniFile(ombrelloniPerFila.size());
         modelloFile.clear();
         for (int i = 0; i < ombrelloniPerFila.size(); i++) {
             modelloFile.addElement("Fila " + (i + 1) + " — " + posizioni[i]
@@ -221,17 +221,18 @@ public class FormConfigurazioneStabilimento {
     // --- Precaricamento della configurazione esistente ---
 
     private void precaricaConfigurazione() {
-        int[] ombrelloniCorrenti = GestoreStabilimento.ombrelloniPerFilaCorrenti();
-        for (int ombrelloni : ombrelloniCorrenti) {
-            ombrelloniPerFila.add(ombrelloni);
+        // Tre righe: [0] ombrelloni per fila, [1] descrizioni dei servizi,
+        // [2] capacità dei servizi (i numeri viaggiano come stringhe).
+        String[][] configurazione = GestoreStabilimento.getConfigurazioneCorrente();
+
+        for (String ombrelloni : configurazione[0]) {
+            ombrelloniPerFila.add(Integer.parseInt(ombrelloni));
         }
         aggiornaListaFile();
 
-        String[] descrizioniCorrenti = GestoreStabilimento.descrizioniServiziCorrenti();
-        int[] capacitaCorrenti = GestoreStabilimento.capacitaServiziCorrenti();
-        for (int i = 0; i < descrizioniCorrenti.length; i++) {
-            descrizioniServizi.add(descrizioniCorrenti[i]);
-            capacitaServizi.add(capacitaCorrenti[i]);
+        for (int i = 0; i < configurazione[1].length; i++) {
+            descrizioniServizi.add(configurazione[1][i]);
+            capacitaServizi.add(Integer.parseInt(configurazione[2][i]));
         }
         aggiornaListaServizi();
     }
