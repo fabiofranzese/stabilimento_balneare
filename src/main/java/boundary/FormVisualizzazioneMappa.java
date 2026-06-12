@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /*
  * FormVisualizzazioneMappa è il Boundary (BCED) del caso d'uso Visualizzazione
@@ -23,8 +25,9 @@ import java.util.Date;
  * (numero di file e ombrelloni). Cliccando un ombrellone se ne vedono i dettagli
  * (numero, fila, prezzo, disponibilità) e si abilita "Prenota" se è disponibile.
  *
- * Scambia con il Controller solo tipi primitivi/array e LocalDate (tipo del JDK):
- * non conosce le Entity, nel rispetto della separazione BCED.
+ * Scambia con il Controller solo tipi del JDK (primitivi/array, LocalDate e
+ * righe di stringhe a chiavi): non conosce le Entity, nel rispetto della
+ * separazione BCED.
  */
 public class FormVisualizzazioneMappa {
 
@@ -127,8 +130,9 @@ public class FormVisualizzazioneMappa {
         pannelloMappa.removeAll();
 
         String[] etichetteFile = GestoreStabilimento.getEtichetteFile();
-        // Per ogni fila, per ogni ombrellone: {numero, id, disponibile (1 = libero)}.
-        long[][][] mappa = GestoreStabilimento.getMappaOmbrelloni(dataCorrente);
+        // Una lista per fila, con una riga per ombrellone: chiavi "numero", "id"
+        // e "disponibile" ("true" = libero).
+        List<List<Map<String, String>>> mappa = GestoreStabilimento.getMappaOmbrelloni(dataCorrente);
 
         if (etichetteFile.length == 0) {
             pannelloMappa.add(new JLabel("Nessuna postazione configurata."));
@@ -136,7 +140,7 @@ public class FormVisualizzazioneMappa {
             // Il mare è sul lato delle prime file: l'indicatore va in cima alla mappa.
             pannelloMappa.add(creaIndicatoreMare());
             for (int i = 0; i < etichetteFile.length; i++) {
-                pannelloMappa.add(creaRigaFila(i, etichetteFile[i], mappa[i]));
+                pannelloMappa.add(creaRigaFila(i, etichetteFile[i], mappa.get(i)));
             }
         }
 
@@ -165,7 +169,8 @@ public class FormVisualizzazioneMappa {
      * destra, largo quanto l'etichetta, bilancia quest'ultima così le celle
      * risultano centrate rispetto all'intera mappa.
      */
-    private JPanel creaRigaFila(int indiceFila, String etichettaFila, long[][] ombrelloni) {
+    private JPanel creaRigaFila(int indiceFila, String etichettaFila,
+                                List<Map<String, String>> ombrelloni) {
         JPanel riga = new JPanel(new BorderLayout());
         riga.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -175,10 +180,10 @@ public class FormVisualizzazioneMappa {
         riga.add(etichetta, BorderLayout.WEST);
 
         JPanel celle = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 4));
-        for (int j = 0; j < ombrelloni.length; j++) {
-            final int numero = (int) ombrelloni[j][0];
-            final long id = ombrelloni[j][1];
-            final boolean disponibile = ombrelloni[j][2] == 1;
+        for (Map<String, String> ombrellone : ombrelloni) {
+            final int numero = Integer.parseInt(ombrellone.get("numero"));
+            final long id = Long.parseLong(ombrellone.get("id"));
+            final boolean disponibile = Boolean.parseBoolean(ombrellone.get("disponibile"));
 
             JButton cella = new JButton(String.valueOf(numero));
             cella.setPreferredSize(new Dimension(48, 36));

@@ -8,6 +8,8 @@ import javax.swing.*;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.List;
+import java.util.Map;
 
 /*
  * FormGestionePrenotazioni è il Boundary (BCED) del caso d'uso Gestione
@@ -28,8 +30,8 @@ import java.awt.event.WindowEvent;
  * del corpo del costruttore.
  *
  * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
- * GestoreStabilimento e scambia solo tipi semplici (email, id, array di
- * primitivi). Non conosce le Entity, nel rispetto della separazione BCED.
+ * GestoreStabilimento e scambia solo tipi semplici (email, id, righe di
+ * stringhe a chiavi). Non conosce le Entity, nel rispetto della separazione BCED.
  */
 public class FormGestionePrenotazioni {
 
@@ -55,11 +57,11 @@ public class FormGestionePrenotazioni {
     private final DefaultListModel<String> modelloPrenotazioni = new DefaultListModel<>();
 
     // Prenotazioni mostrate, allineate per indice alle voci della lista (ordine
-    // deciso dal Controller): una riga per prenotazione, {data, postazione,
-    // servizi, stato, prezzo, id, annullabile} (i valori non testuali come
-    // stringhe). La lista mostra data e stato, le altre colonne popolano il
-    // dettaglio della prenotazione selezionata.
-    private String[][] prenotazioni = new String[0][];
+    // deciso dal Controller): una riga per prenotazione, con chiavi "data",
+    // "postazione", "servizi", "stato", "prezzo", "id" e "annullabile" (i valori
+    // non testuali come stringhe). La lista mostra data e stato, le altre chiavi
+    // popolano il dettaglio della prenotazione selezionata.
+    private List<Map<String, String>> prenotazioni = List.of();
 
     // Adapter verso il sistema esterno di notifica: è il Boundary a chiamare il
     // canale, alla conferma dell'annullamento.
@@ -119,11 +121,11 @@ public class FormGestionePrenotazioni {
         // Ogni voce della lista riporta la data e lo stato della prenotazione
         // (es. "07/06/2026 - Prenotata").
         modelloPrenotazioni.clear();
-        for (String[] prenotazione : prenotazioni) {
-            modelloPrenotazioni.addElement(prenotazione[0] + " - " + prenotazione[3]);
+        for (Map<String, String> prenotazione : prenotazioni) {
+            modelloPrenotazioni.addElement(prenotazione.get("data") + " - " + prenotazione.get("stato"));
         }
 
-        if (prenotazioni.length == 0) {
+        if (prenotazioni.isEmpty()) {
             // Estensione 2.a: nessuna prenotazione.
             etichettaData.setText("Non hai prenotazioni.");
         }
@@ -139,26 +141,27 @@ public class FormGestionePrenotazioni {
     private void mostraDettaglio() {
         int selezione = listaPrenotazioni.getSelectedIndex();
 
-        if (selezione < 0 || selezione >= prenotazioni.length) {
+        if (selezione < 0 || selezione >= prenotazioni.size()) {
             resetDettaglio();
             return;
         }
 
-        String[] riga = prenotazioni[selezione];
-        boolean annullabile = Boolean.parseBoolean(riga[6]);
+        Map<String, String> riga = prenotazioni.get(selezione);
+        boolean annullabile = Boolean.parseBoolean(riga.get("annullabile"));
+        String postazione = riga.get("postazione");
 
-        etichettaData.setText("Data: " + riga[0]);
-        etichettaPostazione.setText("Postazione: " + (riga[1].isEmpty() ? "-" : riga[1]));
-        etichettaServizi.setText("Servizi: " + riga[2]);
-        etichettaStato.setText("Stato: " + riga[3]);
-        etichettaPrezzo.setText(String.format("Totale: € %.2f", Double.parseDouble(riga[4])));
+        etichettaData.setText("Data: " + riga.get("data"));
+        etichettaPostazione.setText("Postazione: " + (postazione.isEmpty() ? "-" : postazione));
+        etichettaServizi.setText("Servizi: " + riga.get("servizi"));
+        etichettaStato.setText("Stato: " + riga.get("stato"));
+        etichettaPrezzo.setText(String.format("Totale: € %.2f", Double.parseDouble(riga.get("prezzo"))));
 
         bottoneAnnulla.setEnabled(annullabile);
 
         // Se la prenotazione è ancora attiva (Prenotata) ma non più annullabile,
         // è scaduto il limite temporale: lo si segnala sopra il pulsante Annulla.
         // Per una prenotazione già Annullata lo stato è già esplicito.
-        if (!annullabile && "Prenotata".equals(riga[3])) {
+        if (!annullabile && "Prenotata".equals(riga.get("stato"))) {
             etichettaAvviso.setText("Non più annullabile: è oltre il limite temporale.");
         } else {
             etichettaAvviso.setText(" ");
@@ -173,7 +176,7 @@ public class FormGestionePrenotazioni {
     private void annulla() {
         int selezione = listaPrenotazioni.getSelectedIndex();
 
-        if (selezione < 0 || selezione >= prenotazioni.length) {
+        if (selezione < 0 || selezione >= prenotazioni.size()) {
             JOptionPane.showMessageDialog(frame,
                     "Seleziona una prenotazione da annullare.",
                     "Nessuna selezione", JOptionPane.INFORMATION_MESSAGE);
@@ -183,7 +186,7 @@ public class FormGestionePrenotazioni {
         // Controllo anticipato: prenotazione non annullabile (già annullata o oltre
         // il limite temporale). Il Controller ricontrolla comunque (difesa in
         // profondità), ma così l'utente ha subito il messaggio.
-        if (!Boolean.parseBoolean(prenotazioni[selezione][6])) {
+        if (!Boolean.parseBoolean(prenotazioni.get(selezione).get("annullabile"))) {
             JOptionPane.showMessageDialog(frame,
                     "Questa prenotazione non può essere annullata:\n"
                             + "è già annullata oppure è oltre il limite temporale consentito\n"
@@ -199,7 +202,7 @@ public class FormGestionePrenotazioni {
             return;
         }
 
-        long idAnnullata = Long.parseLong(prenotazioni[selezione][5]);
+        long idAnnullata = Long.parseLong(prenotazioni.get(selezione).get("id"));
         int esito = GestoreStabilimento.annullaPrenotazione(emailCliente, idAnnullata);
 
         switch (esito) {
@@ -247,7 +250,7 @@ public class FormGestionePrenotazioni {
      * disabilita l'annullamento.
      */
     private void resetDettaglio() {
-        if (prenotazioni.length > 0) {
+        if (!prenotazioni.isEmpty()) {
             etichettaData.setText("Seleziona una prenotazione");
         }
         etichettaPostazione.setText("Postazione: -");

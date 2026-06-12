@@ -33,8 +33,9 @@ import java.util.Set;
  * personali.
  *
  * Come GestoreUtenti, espone operazioni a grana grossa e scambia con il Boundary
- * solo tipi primitivi e array: il Boundary non conosce le Entity e non importa
- * il package entity, nel rispetto della separazione BCED.
+ * solo tipi primitivi, array e collezioni di stringhe del JDK (List/Map, con le
+ * chiavi documentate sui singoli metodi): il Boundary non conosce le Entity e
+ * non importa il package entity, nel rispetto della separazione BCED.
  *
  * NOTE: il modello prevede metodi a grana fine (aggiungiFila(tipoFila),
  * aggiungiOmbrellone(fila, numero)); esporli al Boundary farebbe però transitare
@@ -145,31 +146,37 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Lettura della configurazione corrente, per precaricare il form in un'unica
-     * chiamata. Si restituiscono solo tipi primitivi/array (nessuna Entity verso
-     * il Boundary): tre righe di String[], di lunghezza indipendente:
-     *   [0] numero di ombrelloni di ciascuna fila (interi come stringhe);
-     *   [1] descrizioni dei servizi aggiuntivi;
-     *   [2] capacità dei servizi aggiuntivi (interi come stringhe, parallela a [1]).
+     * Lettura delle file correnti, per precaricare il form (nessuna Entity verso
+     * il Boundary): una riga per fila, nell'ordine della disposizione, con chiave
+     *   "numeroOmbrelloni" — numero di ombrelloni della fila (intero come stringa).
      */
-    public static String[][] getConfigurazioneCorrente() {
-        List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
-        String[] conteggi = new String[file.size()];
+    public static List<Map<String, String>> getFileConfigurate() {
+        List<Map<String, String>> righe = new ArrayList<>();
 
-        for (int i = 0; i < file.size(); i++) {
-            conteggi[i] = String.valueOf(file.get(i).getOmbrelloni().size());
+        for (FilaOmbrelloni fila : new RegistroOmbrelloni().getFile()) {
+            righe.add(Map.of(
+                    "numeroOmbrelloni", String.valueOf(fila.getOmbrelloni().size())));
         }
 
-        List<ServizioAggiuntivo> servizi = new RegistroServiziAggiuntivi().getServizi();
-        String[] descrizioni = new String[servizi.size()];
-        String[] capacita = new String[servizi.size()];
+        return righe;
+    }
 
-        for (int i = 0; i < servizi.size(); i++) {
-            descrizioni[i] = servizi.get(i).getDescrizione();
-            capacita[i] = String.valueOf(servizi.get(i).getCapacita());
+    /*
+     * Lettura dei servizi aggiuntivi correnti, per precaricare il form (nessuna
+     * Entity verso il Boundary): una riga per servizio, con chiavi
+     *   "descrizione" — descrizione del servizio;
+     *   "capacita"    — capacità giornaliera (intero come stringa).
+     */
+    public static List<Map<String, String>> getServiziConfigurati() {
+        List<Map<String, String>> righe = new ArrayList<>();
+
+        for (ServizioAggiuntivo servizio : new RegistroServiziAggiuntivi().getServizi()) {
+            righe.add(Map.of(
+                    "descrizione", servizio.getDescrizione(),
+                    "capacita", String.valueOf(servizio.getCapacita())));
         }
 
-        return new String[][]{conteggi, descrizioni, capacita};
+        return righe;
     }
 
     /*
@@ -392,12 +399,14 @@ public class GestoreStabilimento {
 
     /*
      * Lettura delle tariffe correnti, per precaricare il form in un'unica
-     * chiamata: una riga per tariffa, come array {elemento, stagione, costo}
-     * (i primi due sono indici, da riconvertire in int), in ordine
-     * deterministico anche se le query cambiano ordine. Solo tipi
-     * primitivi/array verso il Boundary.
+     * chiamata: una riga per tariffa, in ordine deterministico (per elemento,
+     * poi per stagione) anche se le query cambiano ordine, con chiavi
+     *   "elemento" — indice dell'elemento (vedi getElementiTariffa);
+     *   "stagione" — indice della stagione (vedi getStagioni);
+     *   "costo"    — costo della tariffa
+     * (tutti i valori come stringhe). Nessuna Entity verso il Boundary.
      */
-    public static double[][] getTariffeCorrenti() {
+    public static List<Map<String, String>> getTariffeCorrenti() {
         List<TipoFila> tipi = tipiFilaConfigurati();
         int numTipi = tipi.size();
         List<ServizioAggiuntivo> servizi = serviziOrdinati();
@@ -428,7 +437,15 @@ public class GestoreStabilimento {
                 ? Double.compare(a[0], b[0])
                 : Double.compare(a[1], b[1]));
 
-        return righe.toArray(new double[0][]);
+        List<Map<String, String>> tariffe = new ArrayList<>();
+        for (double[] riga : righe) {
+            tariffe.add(Map.of(
+                    "elemento", String.valueOf((int) riga[0]),
+                    "stagione", String.valueOf((int) riga[1]),
+                    "costo", String.valueOf(riga[2])));
+        }
+
+        return tariffe;
     }
 
     /*
@@ -474,10 +491,10 @@ public class GestoreStabilimento {
     // ===== Visualizzazione mappa =====
     //
     // Realizzazione, sicura rispetto a BCED, di visualizzaDisponibilita(data):
-    // il Boundary riceve solo array di primitivi/etichette, allineati per indice
-    // di fila e poi di ombrellone. Le file sono ordinate per posizione (prima →
-    // intermedia → ultima, poi per numero): la mappa va dalla riva verso
-    // l'interno.
+    // il Boundary riceve solo etichette e righe di stringhe a chiavi, allineate
+    // per indice di fila e poi di ombrellone. Le file sono ordinate per
+    // posizione (prima → intermedia → ultima, poi per numero): la mappa va
+    // dalla riva verso l'interno.
 
     /*
      * Etichette delle file: "Fila N". La posizione non è mostrata: è suggerita
@@ -495,27 +512,30 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Mappa degli ombrelloni per la data scelta, in un'unica chiamata: per ogni
-     * fila (stesso ordine di getEtichetteFile), per ogni ombrellone, la terna
-     * {numero, id, disponibile} (disponibile: 1 = libero, 0 = occupato; dato
-     * derivato dalle prenotazioni attive). L'id identifica l'ombrellone
-     * selezionato sulla mappa per avviarne la prenotazione.
+     * Mappa degli ombrelloni per la data scelta, in un'unica chiamata: una lista
+     * per fila (stesso ordine di getEtichetteFile), con una riga per ombrellone
+     * dalle chiavi
+     *   "numero"      — numero dell'ombrellone;
+     *   "id"          — id che identifica l'ombrellone selezionato sulla mappa
+     *                   per avviarne la prenotazione;
+     *   "disponibile" — "true" se libero, "false" se occupato (dato derivato
+     *                   dalle prenotazioni attive)
+     * (tutti i valori come stringhe).
      */
-    public static long[][][] getMappaOmbrelloni(LocalDate data) {
-        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+    public static List<List<Map<String, String>>> getMappaOmbrelloni(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-        long[][][] mappa = new long[file.size()][][];
+        List<List<Map<String, String>>> mappa = new ArrayList<>();
 
-        for (int i = 0; i < file.size(); i++) {
-            List<Ombrellone> ombrelloni = ombrelloniOrdinati(file.get(i));
-            mappa[i] = new long[ombrelloni.size()][];
-            for (int j = 0; j < ombrelloni.size(); j++) {
-                Ombrellone ombrellone = ombrelloni.get(j);
-                mappa[i][j] = new long[]{
-                        ombrellone.getNumero(),
-                        ombrellone.getId(),
-                        registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data) ? 0 : 1};
+        for (FilaOmbrelloni fila : fileOrdinatePerMappa()) {
+            List<Map<String, String>> righeFila = new ArrayList<>();
+            for (Ombrellone ombrellone : ombrelloniOrdinati(fila)) {
+                righeFila.add(Map.of(
+                        "numero", String.valueOf(ombrellone.getNumero()),
+                        "id", String.valueOf(ombrellone.getId()),
+                        "disponibile", String.valueOf(
+                                !registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data))));
             }
+            mappa.add(righeFila);
         }
 
         return mappa;
@@ -598,25 +618,25 @@ public class GestoreStabilimento {
 
     /*
      * Servizi prenotabili per la data, in un'unica chiamata: una riga per
-     * servizio, {descrizione, id, residuo, prezzo unitario} (i valori numerici
-     * come stringhe). Il residuo è la quantità massima ordinabile (dato derivato
-     * dalle prenotazioni attive), il prezzo è quello della stagione della data;
-     * l'id identifica il servizio scelto nella prenotazione. Solo tipi
-     * primitivi/array verso il Boundary.
+     * servizio, con chiavi
+     *   "descrizione" — descrizione del servizio;
+     *   "id"          — id che identifica il servizio scelto nella prenotazione;
+     *   "residuo"     — quantità massima ordinabile (dato derivato dalle
+     *                   prenotazioni attive);
+     *   "prezzo"      — prezzo unitario per la stagione della data
+     * (i valori numerici come stringhe). Nessuna Entity verso il Boundary.
      */
-    public static String[][] getServiziPrenotabili(LocalDate data) {
-        List<ServizioAggiuntivo> servizi = serviziSelezionabili(data);
+    public static List<Map<String, String>> getServiziPrenotabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
         Stagione stagione = stagionePerData(data);
-        String[][] righe = new String[servizi.size()][];
+        List<Map<String, String>> righe = new ArrayList<>();
 
-        for (int i = 0; i < servizi.size(); i++) {
-            ServizioAggiuntivo servizio = servizi.get(i);
-            righe[i] = new String[]{
-                    servizio.getDescrizione(),
-                    String.valueOf(servizio.getId()),
-                    String.valueOf(registroPrenotazioni.residuoServizio(servizio, data)),
-                    String.valueOf(costoServizio(servizio, stagione))};
+        for (ServizioAggiuntivo servizio : serviziSelezionabili(data)) {
+            righe.add(Map.of(
+                    "descrizione", servizio.getDescrizione(),
+                    "id", String.valueOf(servizio.getId()),
+                    "residuo", String.valueOf(registroPrenotazioni.residuoServizio(servizio, data)),
+                    "prezzo", String.valueOf(costoServizio(servizio, stagione))));
         }
 
         return righe;
@@ -774,18 +794,24 @@ public class GestoreStabilimento {
     // prenotazione con il suo id.
 
     /*
-     * Storico del cliente in un'unica chiamata: una riga per prenotazione,
-     * {data, postazione, servizi, stato, prezzo, id, annullabile} (i valori non
-     * testuali come stringhe), in ordine deterministico (per data, poi per id).
-     * "annullabile" indica se l'annullamento è possibile oggi (stato Prenotata e
-     * oggi < data): il Boundary la usa per abilitare/disabilitare l'annullamento.
-     * Vuoto se l'email non corrisponde a un cliente. Solo tipi primitivi/array
-     * verso il Boundary.
+     * Storico del cliente in un'unica chiamata: una riga per prenotazione, in
+     * ordine deterministico (per data, poi per id), con chiavi
+     *   "data"        — data prenotata (dd/MM/yyyy);
+     *   "postazione"  — postazione scelta ("Ombrellone n. X (Fila Y)");
+     *   "servizi"     — servizi aggiuntivi con quantità, o "nessuno";
+     *   "stato"       — nome dello stato (Prenotata/Annullata);
+     *   "prezzo"      — prezzo totale;
+     *   "id"          — id della prenotazione;
+     *   "annullabile" — "true"/"false": indica se l'annullamento è possibile
+     *                   oggi (stato Prenotata e oggi < data); il Boundary la usa
+     *                   per abilitare/disabilitare l'annullamento
+     * (i valori non testuali come stringhe). Lista vuota se l'email non
+     * corrisponde a un cliente. Nessuna Entity verso il Boundary.
      */
-    public static String[][] getPrenotazioniCliente(String emailCliente) {
+    public static List<Map<String, String>> getPrenotazioniCliente(String emailCliente) {
         Cliente cliente = clientePerEmail(emailCliente);
         if (cliente == null) {
-            return new String[0][];
+            return List.of();
         }
 
         List<Prenotazione> prenotazioni = new RegistroPrenotazioni().prenotazioniCliente(cliente);
@@ -793,22 +819,21 @@ public class GestoreStabilimento {
                 .thenComparing(Prenotazione::getId));
 
         LocalDate oggi = LocalDate.now();
-        String[][] righe = new String[prenotazioni.size()][];
+        List<Map<String, String>> righe = new ArrayList<>();
 
-        for (int i = 0; i < prenotazioni.size(); i++) {
-            Prenotazione prenotazione = prenotazioni.get(i);
+        for (Prenotazione prenotazione : prenotazioni) {
             LocalDate data = prenotazione.getData();
             String servizi = descriviServizi(prenotazione);
             StatoPrenotazione stato = prenotazione.getStato();
 
-            righe[i] = new String[]{
-                    (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "",
-                    descriviPostazione(prenotazione),
-                    servizi.isEmpty() ? "nessuno" : servizi,
-                    (stato != null) ? stato.nome() : "",
-                    String.valueOf(prenotazione.getPrezzoTotale()),
-                    String.valueOf(prenotazione.getId()),
-                    String.valueOf(prenotazione.isAnnullabile(oggi))};
+            righe.add(Map.of(
+                    "data", (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "",
+                    "postazione", descriviPostazione(prenotazione),
+                    "servizi", servizi.isEmpty() ? "nessuno" : servizi,
+                    "stato", (stato != null) ? stato.nome() : "",
+                    "prezzo", String.valueOf(prenotazione.getPrezzoTotale()),
+                    "id", String.valueOf(prenotazione.getId()),
+                    "annullabile", String.valueOf(prenotazione.isAnnullabile(oggi))));
         }
 
         return righe;

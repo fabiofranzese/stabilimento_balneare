@@ -7,6 +7,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /*
  * FormDefinizioneTariffe è il Boundary (BCED) del caso d'uso Definizione tariffe.
@@ -23,7 +24,8 @@ import java.util.List;
  * presenti ed elimina le tariffe non più nell'elenco. Sia le modifiche sia le
  * rimozioni si applicano dunque solo al salvataggio.
  * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
- * GestoreStabilimento e scambia solo tipi primitivi/array.
+ * GestoreStabilimento e scambia solo tipi primitivi/array e righe di stringhe
+ * a chiavi.
  */
 public class FormDefinizioneTariffe {
 
@@ -178,11 +180,12 @@ public class FormDefinizioneTariffe {
     }
 
     private void precaricaTariffe() {
-        // Una riga per tariffa: {elemento, stagione, costo} (i primi due sono indici).
-        for (double[] tariffa : GestoreStabilimento.getTariffeCorrenti()) {
-            elementi.add((int) tariffa[0]);
-            stagioni.add((int) tariffa[1]);
-            costi.add(tariffa[2]);
+        // Una riga per tariffa: "elemento" e "stagione" sono indici, "costo" il
+        // prezzo (tutti come stringhe).
+        for (Map<String, String> tariffa : GestoreStabilimento.getTariffeCorrenti()) {
+            elementi.add(Integer.parseInt(tariffa.get("elemento")));
+            stagioni.add(Integer.parseInt(tariffa.get("stagione")));
+            costi.add(Double.parseDouble(tariffa.get("costo")));
         }
         aggiornaListaTariffe();
     }

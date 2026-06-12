@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /*
  * FormEffettuaPrenotazione è il Boundary (BCED) del caso d'uso Effettua
@@ -24,8 +25,8 @@ import java.util.List;
  *
  * L'elenco dei servizi è costruito a runtime nel pannelloServizi, perché dipende
  * dai dati (numero e residuo dei servizi per la data). Con il Controller scambia
- * solo tipi semplici (email, id, LocalDate, primitivi): non conosce le Entity,
- * nel rispetto della separazione BCED.
+ * solo tipi semplici (email, id, LocalDate, primitivi e righe di stringhe a
+ * chiavi): non conosce le Entity, nel rispetto della separazione BCED.
  */
 public class FormEffettuaPrenotazione {
 
@@ -118,23 +119,24 @@ public class FormEffettuaPrenotazione {
         pannelloServizi.removeAll();
         spinnerServizi.clear();
 
-        // Una riga per servizio: {descrizione, id, residuo, prezzo unitario}
-        // (i valori numerici viaggiano come stringhe).
-        String[][] servizi = GestoreStabilimento.getServiziPrenotabili(data);
-        idServiziVisualizzati = new long[servizi.length];
+        // Una riga per servizio: chiavi "descrizione", "id", "residuo" e
+        // "prezzo" unitario (i valori numerici viaggiano come stringhe).
+        List<Map<String, String>> servizi = GestoreStabilimento.getServiziPrenotabili(data);
+        idServiziVisualizzati = new long[servizi.size()];
 
-        if (servizi.length == 0) {
+        if (servizi.isEmpty()) {
             pannelloServizi.add(new JLabel("Nessun servizio aggiuntivo disponibile."));
         } else {
-            for (int i = 0; i < servizi.length; i++) {
-                idServiziVisualizzati[i] = Long.parseLong(servizi[i][1]);
-                int residuo = Integer.parseInt(servizi[i][2]);
-                double prezzo = Double.parseDouble(servizi[i][3]);
+            for (int i = 0; i < servizi.size(); i++) {
+                Map<String, String> servizio = servizi.get(i);
+                idServiziVisualizzati[i] = Long.parseLong(servizio.get("id"));
+                int residuo = Integer.parseInt(servizio.get("residuo"));
+                double prezzo = Double.parseDouble(servizio.get("prezzo"));
 
                 JPanel riga = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
                 riga.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-                riga.add(new JLabel(servizi[i][0]
+                riga.add(new JLabel(servizio.get("descrizione")
                         + " — " + formattaPrezzo(prezzo)
                         + "  (max: " + residuo + ")"));
 

@@ -7,6 +7,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /*
  * FormConfigurazioneStabilimento è il Boundary (BCED) del caso d'uso
@@ -22,7 +23,7 @@ import java.util.List;
  * conferma l'intera configurazione viene inviata al Controller. Questa classe
  * contiene solo l'interazione con l'utente: delega ogni logica a
  * GestoreStabilimento e non accede né al dominio né alla persistenza (scambia
- * solo tipi primitivi/array).
+ * solo tipi primitivi/array e righe di stringhe a chiavi).
  */
 public class FormConfigurazioneStabilimento {
 
@@ -221,18 +222,16 @@ public class FormConfigurazioneStabilimento {
     // --- Precaricamento della configurazione esistente ---
 
     private void precaricaConfigurazione() {
-        // Tre righe: [0] ombrelloni per fila, [1] descrizioni dei servizi,
-        // [2] capacità dei servizi (i numeri viaggiano come stringhe).
-        String[][] configurazione = GestoreStabilimento.getConfigurazioneCorrente();
-
-        for (String ombrelloni : configurazione[0]) {
-            ombrelloniPerFila.add(Integer.parseInt(ombrelloni));
+        // Una riga per fila ("numeroOmbrelloni") e una per servizio
+        // ("descrizione", "capacita"); i numeri viaggiano come stringhe.
+        for (Map<String, String> fila : GestoreStabilimento.getFileConfigurate()) {
+            ombrelloniPerFila.add(Integer.parseInt(fila.get("numeroOmbrelloni")));
         }
         aggiornaListaFile();
 
-        for (int i = 0; i < configurazione[1].length; i++) {
-            descrizioniServizi.add(configurazione[1][i]);
-            capacitaServizi.add(Integer.parseInt(configurazione[2][i]));
+        for (Map<String, String> servizio : GestoreStabilimento.getServiziConfigurati()) {
+            descrizioniServizi.add(servizio.get("descrizione"));
+            capacitaServizi.add(Integer.parseInt(servizio.get("capacita")));
         }
         aggiornaListaServizi();
     }
