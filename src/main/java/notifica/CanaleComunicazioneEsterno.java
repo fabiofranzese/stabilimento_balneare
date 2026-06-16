@@ -13,21 +13,15 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /*
- * CanaleComunicazioneEsterno è il sistema di notifica esterno (email): componente
- * COTS, fuori dai livelli BCED. È l'"adaptee" del pattern Adapter, con una propria
- * interfaccia invia(destinatario, oggetto, corpo) adattata da
- * boundary.notifica.AdapterServizioNotifica.
+ * CanaleComunicazioneEsterno è il sistema di notifica esterno COTS.
  *
- * L'invio è reale, via Jakarta Mail su un relay SMTP (Brevo): credenziali e
- * parametri sono letti dal classpath (email.properties, fuori da VCS). La notifica
- * è best-effort e successiva alla conferma dell'operazione: ogni errore viene
- * loggato su stderr e non propagato, così non interrompe il flusso applicativo.
+ * L'invio avviene via Jakarta Mail su un relay SMTP (Brevo): credenziali e
+ * parametri sono letti da email.properties.
  */
 public class CanaleComunicazioneEsterno {
 
     private static final String FILE_CONFIG = "/email.properties";
 
-    // Configurazione SMTP caricata una volta dal classpath; null se assente.
     private final Properties config;
 
     public CanaleComunicazioneEsterno() {
@@ -35,9 +29,8 @@ public class CanaleComunicazioneEsterno {
     }
 
     /*
-     * Invia un messaggio sul canale esterno (email). Firma volutamente diversa da
-     * quella dell'applicazione: è ciò che l'Adapter deve adattare. Invio sincrono
-     * (applicazione monolitica, nessun thread in background).
+     * Invia un messaggio sul canale esterno (email).
+     * L'invio è sincrono dato che l'applicazione è monolitica.
      */
     public void invia(String destinatario, String oggetto, String corpo) {
         if (config == null) {
@@ -74,15 +67,12 @@ public class CanaleComunicazioneEsterno {
 
             Transport.send(messaggio);
         } catch (Exception e) {
-            // Notifica best-effort: si registra l'errore e si prosegue (l'operazione
-            // di dominio è già confermata a monte).
             System.err.println("Invio notifica email fallito: " + e.getMessage());
         }
     }
 
     /*
-     * Carica la configurazione SMTP da email.properties sul classpath; null se il
-     * file non c'è (es. credenziali non predisposte) o non è leggibile.
+     * Carica la configurazione SMTP da email.properties..
      */
     private Properties caricaConfig() {
         try (InputStream flusso = getClass().getResourceAsStream(FILE_CONFIG)) {

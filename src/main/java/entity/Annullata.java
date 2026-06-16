@@ -1,10 +1,7 @@
 package entity;
 
 /*
- * Annullata: stato concreto di una prenotazione annullata. Non occupa più la
- * postazione, che torna quindi disponibile per la sua data. Oggetto
- * comportamentale (non Entity): persistito come "ANNULLATA" nella colonna
- * tipo_stato di Prenotazione.
+ * Stato concreto di una prenotazione annullata.
  */
 public class Annullata extends StatoPrenotazione {
 
@@ -15,14 +12,12 @@ public class Annullata extends StatoPrenotazione {
 
     @Override
     public boolean isAnnullabile() {
-        // Una prenotazione già annullata non può essere annullata di nuovo.
         return false;
     }
 
     @Override
     public void annulla(Prenotazione prenotazione) {
-        // nessuna transizione prevista: annullare una prenotazione già Annullata
-        // non ha effetto.
+        // nessuna transizione prevista.
     }
 
     @Override

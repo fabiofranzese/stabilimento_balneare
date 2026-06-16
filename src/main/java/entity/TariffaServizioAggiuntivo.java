@@ -3,8 +3,8 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * TariffaServizioAggiuntivo è il prezzo di un servizio aggiuntivo per una certa
- * stagione. Sottoclasse concreta di Tariffa con discriminatore "SERVIZIO".
+ * TariffaServizioAggiuntivo è il prezzo di un servizio aggiuntivo per una certa stagione.
+ * Questa è sottoclasse concreta di Tariffa con discriminatore "SERVIZIO".
  */
 @Entity
 @DiscriminatorValue("SERVIZIO")

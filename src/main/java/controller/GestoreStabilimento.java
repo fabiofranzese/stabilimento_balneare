@@ -27,21 +27,10 @@ import java.util.Map;
 import java.util.Set;
 
 /*
- * GestoreStabilimento è il Controller (GRASP) e la Façade dei casi d'uso che
+ * GestoreStabilimento è il Controller e la Façade dei casi d'uso che
  * ruotano attorno allo stabilimento: Configurazione stabilimento, Definizione
  * tariffe, Visualizzazione mappa, Effettua prenotazione e Gestione prenotazioni
  * personali.
- *
- * Come GestoreUtenti, espone operazioni a grana grossa e scambia con il Boundary
- * solo tipi primitivi, array e collezioni di stringhe del JDK (List/Map, con le
- * chiavi documentate sui singoli metodi): il Boundary non conosce le Entity e
- * non importa il package entity, nel rispetto della separazione BCED.
- *
- * NOTE: il modello prevede metodi a grana fine (aggiungiFila(tipoFila),
- * aggiungiOmbrellone(fila, numero)); esporli al Boundary farebbe però transitare
- * un'Entity (la fila) verso la GUI. Si usa quindi un'unica operazione
- * salvaConfigurazione: la Façade compone internamente le file e i loro
- * ombrelloni tramite FilaOmbrelloni.creaOmbrellone.
  */
 public class GestoreStabilimento {
 
@@ -74,43 +63,12 @@ public class GestoreStabilimento {
     public static final int ERRORE_ANNULLAMENTO = 33;
 
     /*
-     * Etichette in italiano della posizione di ogni fila, derivate dall'ordine
-     * (prima/intermedia/ultima). Il Boundary le usa per mostrare la posizione
-     * assegnata dal sistema, aggiornata a ogni aggiunta/rimozione di una fila.
-     */
-    public static String[] getEtichettePosizioniFile(int numeroFile) {
-        String[] etichette = new String[Math.max(0, numeroFile)];
-
-        for (int i = 0; i < etichette.length; i++) {
-            etichette[i] = tipoFilaPerPosizione(i, numeroFile).getEtichetta();
-        }
-
-        return etichette;
-    }
-
-    /*
-     * Regola di derivazione della posizione: la posizione di una fila dipende
-     * dal suo ordine nello stabilimento, non è scelta dal gestore. La prima è
-     * PRIMA_FILA (anche se è l'unica: il primo controllo vince), l'ultima è
-     * ULTIMA_FILA, quelle in mezzo FILA_INTERMEDIA.
-     */
-    private static TipoFila tipoFilaPerPosizione(int indice, int totale) {
-        if (indice <= 0) {
-            return TipoFila.PRIMA_FILA;
-        }
-        if (indice >= totale - 1) {
-            return TipoFila.ULTIMA_FILA;
-        }
-        return TipoFila.FILA_INTERMEDIA;
-    }
-
-    /*
-     * Caso d'uso Configurazione stabilimento.
+     * CONFIGURAZIONE STABILIMENTO
      *
-     * Riceve la disposizione (per ogni fila: numero di ombrelloni) e i servizi
-     * aggiuntivi (descrizione + capacità, array paralleli). Valida i dati, poi
-     * rigenera disposizione e servizi (strategia "replace"). La posizione delle
-     * file non è scelta dal gestore: è derivata qui dall'ordine
+     * 1. Riceve la disposizione: numero di ombrelloni per fila, descrizioni dei servizi
+     * aggiuntivi e loro capacità (array paralleli per i servizi).
+     * 2. Valida i dati, e rigenera disposizione e servizi.
+     * La posizione delle file non è scelta dal gestore, ma è derivata dall'ordine
      * (tipoFilaPerPosizione) e passata al RegistroOmbrelloni.
      */
     public static int salvaConfigurazione(int[] ombrelloniPerFila,
@@ -120,9 +78,8 @@ public class GestoreStabilimento {
             return DATI_NON_VALIDI;
         }
 
-        // Precondizione: la riconfigurazione è distruttiva (sostituisce file e
-        // servizi), quindi è bloccata se esiste anche una sola prenotazione attiva
-        // che ne riferisce postazioni o servizi.
+        // Precondizione: Dato che la riconfigurazione è distruttiva (sostituisce file e
+        // servizi), è bloccata se esiste anche una sola prenotazione attiva.
         if (new RegistroPrenotazioni().isPrenotazioniAttivePresenti()) {
             return PRENOTAZIONI_PRESENTI;
         }
@@ -146,9 +103,9 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Lettura delle file correnti, per precaricare il form (nessuna Entity verso
-     * il Boundary): una riga per fila, nell'ordine della disposizione, con chiave
-     *   "numeroOmbrelloni" — numero di ombrelloni della fila (intero come stringa).
+     * Lettura delle file correnti, per precaricare il form.
+     * Una riga per fila, nell'ordine della disposizione, con chiave
+     * "numeroOmbrelloni" e valore numero di ombrelloni della fila.
      */
     public static List<Map<String, String>> getFileConfigurate() {
         List<Map<String, String>> righe = new ArrayList<>();
@@ -162,10 +119,10 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Lettura dei servizi aggiuntivi correnti, per precaricare il form (nessuna
-     * Entity verso il Boundary): una riga per servizio, con chiavi
-     *   "descrizione" — descrizione del servizio;
-     *   "capacita"    — capacità giornaliera (intero come stringa).
+     * Lettura dei servizi aggiuntivi correnti, per precaricare il form.
+     * Una riga per servizio, con chiavi:
+     * "descrizione" — descrizione del servizio;
+     * "capacita"— capacità giornaliera.
      */
     public static List<Map<String, String>> getServiziConfigurati() {
         List<Map<String, String>> righe = new ArrayList<>();
@@ -180,8 +137,39 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Validazione della configurazione: almeno una fila, ciascuna con almeno un
-     * ombrellone; array dei servizi coerenti in lunghezza, descrizioni non vuote,
+     * Etichette in italiano della posizione di ogni fila, derivate dall'ordine.
+     * Il Boundary le usa per mostrare la posizione assegnata dal sistema, la quale
+     * viene aggiornata a ogni aggiunta/rimozione di una fila.
+     */
+    public static String[] getEtichettePosizioniFile(int numeroFile) {
+        String[] etichette = new String[Math.max(0, numeroFile)];
+
+        for (int i = 0; i < etichette.length; i++) {
+            etichette[i] = tipoFilaPerPosizione(i, numeroFile).getEtichetta();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Regola di derivazione della posizione: la posizione di una fila dipende
+     * dal suo ordine nello stabilimento, non è scelta dal gestore. La prima è
+     * PRIMA_FILA, l'ultima è ULTIMA_FILA, quelle in mezzo FILA_INTERMEDIA.
+     */
+    private static TipoFila tipoFilaPerPosizione(int indice, int totale) {
+        if (indice <= 0) {
+            return TipoFila.PRIMA_FILA;
+        }
+        if (indice >= totale - 1) {
+            return TipoFila.ULTIMA_FILA;
+        }
+        return TipoFila.FILA_INTERMEDIA;
+    }
+
+    /*
+     * Validazione della configurazione: 
+     * almeno una fila, ciascuna con almeno un ombrellone, array dei
+     * servizi coerenti in lunghezza; descrizioni non vuote; 
      * capacità non negative.
      */
     private static boolean isDatiValidi(int[] ombrelloniPerFila,
@@ -218,70 +206,12 @@ public class GestoreStabilimento {
         return true;
     }
 
-    // ===== Definizione tariffe =====
-
     /*
-     * Etichette in italiano delle stagioni, nell'ordine dell'enum Stagione:
-     * popolano la combo del form (l'indice scelto corrisponde a
-     * Stagione.values()[indice]).
-     */
-    public static String[] getStagioni() {
-        Stagione[] valori = Stagione.values();
-        String[] etichette = new String[valori.length];
-
-        for (int i = 0; i < valori.length; i++) {
-            etichette[i] = valori[i].getEtichetta();
-        }
-
-        return etichette;
-    }
-
-    /*
-     * Stagione in cui cade una data. Regola semplice (facilmente modificabile in
-     * un unico punto): da giugno a settembre è alta stagione, altrimenti bassa.
-     */
-    private static Stagione stagionePerData(LocalDate data) {
-        int mese = data.getMonthValue();
-        return (mese >= 6 && mese <= 9) ? Stagione.ALTA : Stagione.BASSA;
-    }
-
-    /*
-     * Indica se lo stabilimento è già stato configurato (esiste almeno una fila):
-     * senza file non ci sono postazioni da tariffare.
-     */
-    public static boolean isConfigurazioneEffettuata() {
-        return !new RegistroOmbrelloni().getFile().isEmpty();
-    }
-
-    /*
-     * Etichette dei possibili "elementi" di una tariffa, per la combo del form:
-     * prima i tipi di fila effettivamente configurati, poi i servizi aggiuntivi.
-     * L'indice scelto identifica l'elemento: 0..numTipi-1 i tipi di fila, da
-     * numTipi in poi i servizi.
-     */
-    public static String[] getElementiTariffa() {
-        List<TipoFila> tipi = tipiFilaConfigurati();
-        List<ServizioAggiuntivo> servizi = serviziOrdinati();
-
-        String[] etichette = new String[tipi.size() + servizi.size()];
-
-        for (int i = 0; i < tipi.size(); i++) {
-            etichette[i] = "Ombrellone — " + tipi.get(i).getEtichetta();
-        }
-        for (int i = 0; i < servizi.size(); i++) {
-            etichette[tipi.size() + i] = "Servizio — " + servizi.get(i).getDescrizione();
-        }
-
-        return etichette;
-    }
-
-    /*
-     * Caso d'uso Definizione tariffe ("reconcile-on-save").
+     * DEFINIZIONE TARIFFE
      *
-     * La lista inviata (array paralleli elemento + stagione + costo) è lo stato
-     * desiderato completo: ogni tariffa indicata viene impostata o aggiornata
-     * ("upsert" nel RegistroTariffe), quelle non più presenti vengono eliminate
-     * dal database. Una lista vuota è valida: "elimina tutte le tariffe".
+     * Le tariffe definite sono in 3 array paralleli elemento + stagione + costo),
+     * con ogni tariffa indicata viene impostata o aggiornata e quelle non più
+     * presenti che vengono eliminate dal database.
      */
     public static int salvaTariffe(int[] elementiIndici, int[] stagioniIndici, double[] costi) {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -296,7 +226,7 @@ public class GestoreStabilimento {
             RegistroTariffe registroTariffe = new RegistroTariffe();
             Stagione[] stagioni = Stagione.values();
 
-            // Chiavi (elemento + stagione) inviate dal gestore: lo stato desiderato.
+            // Chiavi (elemento + stagione) inviate dal gestore.
             Set<String> chiaviInviate = new HashSet<>();
             for (int i = 0; i < elementiIndici.length; i++) {
                 chiaviInviate.add(chiaveTariffa(elementiIndici[i], stagioniIndici[i]));
@@ -329,11 +259,6 @@ public class GestoreStabilimento {
     /*
      * Elimina le tariffe presenti nel database ma non nell'insieme inviato dal
      * gestore (chiavi elemento+stagione).
-     *
-     * NOTE: la riconciliazione è limitata agli elementi visibili nel form (tipi
-     * di fila configurati + servizi esistenti). Una tariffa di un tipo/servizio
-     * non più presente non compare nell'elenco, quindi non può essere stata
-     * rimossa dal gestore: viene preservata in archivio, non eliminata.
      */
     private static void eliminaTariffeNonInviate(RegistroTariffe registroTariffe,
                                                  List<TipoFila> tipi, List<ServizioAggiuntivo> servizi,
@@ -358,16 +283,15 @@ public class GestoreStabilimento {
 
     /*
      * Chiave univoca di una tariffa per la riconciliazione: indice dell'elemento
-     * e ordinale della stagione.
+     * e indice della stagione.
      */
-    private static String chiaveTariffa(int elemento, int stagioneOrdinale) {
-        return elemento + ":" + stagioneOrdinale;
+    private static String chiaveTariffa(int elemento, int stagioneindice) {
+        return elemento + ":" + stagioneindice;
     }
 
     /*
      * Validazione delle tariffe: array coerenti in lunghezza, indici validi,
-     * costi strettamente positivi (dal flusso: tariffa <= 0 è un errore). Una
-     * lista vuota è valida: significa "elimina tutte le tariffe".
+     * costi strettamente positivi.
      */
     private static boolean isDatiTariffeValidi(int[] elementiIndici, int[] stagioniIndici,
                                                double[] costi, int numeroElementi) {
@@ -398,13 +322,65 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Lettura delle tariffe correnti, per precaricare il form in un'unica
-     * chiamata: una riga per tariffa, in ordine deterministico (per elemento,
-     * poi per stagione) anche se le query cambiano ordine, con chiavi
-     *   "elemento" — indice dell'elemento (vedi getElementiTariffa);
-     *   "stagione" — indice della stagione (vedi getStagioni);
-     *   "costo"    — costo della tariffa
-     * (tutti i valori come stringhe). Nessuna Entity verso il Boundary.
+     * Etichette delle stagioni, nell'ordine dell'enum Stagione.
+     * Questi popolano la combo del form.
+     */
+    public static String[] getStagioni() {
+        Stagione[] valori = Stagione.values();
+        String[] etichette = new String[valori.length];
+
+        for (int i = 0; i < valori.length; i++) {
+            etichette[i] = valori[i].getEtichetta();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Stagione in cui cade una data:
+     * Da giugno a settembre è alta stagione, altrimenti bassa.
+     */
+    private static Stagione stagionePerData(LocalDate data) {
+        int mese = data.getMonthValue();
+        return (mese >= 6 && mese <= 9) ? Stagione.ALTA : Stagione.BASSA;
+    }
+
+    /*
+     * Indica se lo stabilimento è già stato configurato (esiste almeno una fila),
+     * dato che la configurazione è precondizione della definizione delle tariffe
+     */
+    public static boolean isConfigurazioneEffettuata() {
+        return !new RegistroOmbrelloni().getFile().isEmpty();
+    }
+
+    /*
+     * Etichette dei possibili elementi di una tariffa, per la combo del form:
+     * i tipi di fila effettivamente configurati e i servizi aggiuntivi.
+     * L'indice scelto identifica l'elemento: dat 0 a numTipi-1 i tipi di fila, da
+     * numTipi in poi i servizi.
+     */
+    public static String[] getElementiTariffa() {
+        List<TipoFila> tipi = tipiFilaConfigurati();
+        List<ServizioAggiuntivo> servizi = serviziOrdinati();
+
+        String[] etichette = new String[tipi.size() + servizi.size()];
+
+        for (int i = 0; i < tipi.size(); i++) {
+            etichette[i] = "Ombrellone — " + tipi.get(i).getEtichetta();
+        }
+        for (int i = 0; i < servizi.size(); i++) {
+            etichette[tipi.size() + i] = "Servizio — " + servizi.get(i).getDescrizione();
+        }
+
+        return etichette;
+    }
+
+    /*
+     * Lettura delle tariffe correnti per pre-caricare il form in un'unica
+     * chiamata. Ritorna una riga per tariffa, con chiavi:
+     * "elemento": indice dell'elemento (vedi getElementiTariffa);
+     * "stagione": indice della stagione (vedi getStagioni);
+     * "costo": costo della tariffa
      */
     public static List<Map<String, String>> getTariffeCorrenti() {
         List<TipoFila> tipi = tipiFilaConfigurati();
@@ -449,9 +425,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Tipi di fila effettivamente configurati (presenti in almeno una fila), in
-     * ordine stabile (ordinale dell'enum): si possono tariffare solo i tipi di
-     * fila che esistono nello stabilimento.
+     * Tipi di fila configurati da ottenere dato che si possono tariffare
+     *  solo i tipi di fila che esistono nello stabilimento.
      */
     private static List<TipoFila> tipiFilaConfigurati() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
@@ -470,8 +445,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Servizi aggiuntivi ordinati per id: ordinamento stabile su cui si basa la
-     * codifica degli indici degli elementi (combo, salvataggio, precaricamento).
+     * Servizi aggiuntivi configurati da ottenere dato che si possono tariffare
+     * solo i servizi che esistono nello stabilimento
      */
     private static List<ServizioAggiuntivo> serviziOrdinati() {
         List<ServizioAggiuntivo> servizi = new RegistroServiziAggiuntivi().getServizi();
@@ -488,39 +463,21 @@ public class GestoreStabilimento {
         return -1;
     }
 
-    // ===== Visualizzazione mappa =====
-    //
-    // Realizzazione, sicura rispetto a BCED, di visualizzaDisponibilita(data):
-    // il Boundary riceve solo etichette e righe di stringhe a chiavi, allineate
-    // per indice di fila e poi di ombrellone. Le file sono ordinate per
-    // posizione (prima → intermedia → ultima, poi per numero): la mappa va
-    // dalla riva verso l'interno.
-
     /*
-     * Etichette delle file: "Fila N". La posizione non è mostrata: è suggerita
-     * dall'ordine delle file rispetto al mare.
+     * VISUALIZZAZIONE MAPPA
+     * Il Boundary riceve solo etichette e righe di stringhe a chiavi, allineate
+     * per indice di fila e poi di ombrellone. Le file sono ordinate per
+     * posizione (prima -> intermedia -> ultima) e poi per numero).
+     * La mappa che va dalla riva verso l'interno.
      */
-    public static String[] getEtichetteFile() {
-        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
-        String[] etichette = new String[file.size()];
-
-        for (int i = 0; i < file.size(); i++) {
-            etichette[i] = "Fila " + file.get(i).getNumero();
-        }
-
-        return etichette;
-    }
 
     /*
      * Mappa degli ombrelloni per la data scelta, in un'unica chiamata: una lista
      * per fila (stesso ordine di getEtichetteFile), con una riga per ombrellone
      * dalle chiavi
-     *   "numero"      — numero dell'ombrellone;
-     *   "id"          — id che identifica l'ombrellone selezionato sulla mappa
-     *                   per avviarne la prenotazione;
-     *   "disponibile" — "true" se libero, "false" se occupato (dato derivato
-     *                   dalle prenotazioni attive)
-     * (tutti i valori come stringhe).
+     *   "numero": numero dell'ombrellone;
+     *   "id": identifica l'ombrellone selezionato sulla mappa per avviarne la prenotazione;
+     *   "disponibile": true se libero, false se occupato (derivato dalle prenotazioni attive)
      */
     public static List<List<Map<String, String>>> getMappaOmbrelloni(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -542,9 +499,22 @@ public class GestoreStabilimento {
     }
 
     /*
+     * Etichette delle file: "Fila N".
+     */
+    public static String[] getEtichetteFile() {
+        List<FilaOmbrelloni> file = fileOrdinatePerMappa();
+        String[] etichette = new String[file.size()];
+
+        for (int i = 0; i < file.size(); i++) {
+            etichette[i] = "Fila " + file.get(i).getNumero();
+        }
+
+        return etichette;
+    }
+
+    /*
      * Prezzo del tipo di fila indicato per la stagione della data scelta
-     * (condiviso da tutti gli ombrelloni della fila); -1 se la tariffa non è
-     * definita.
+     * Il prezzo è -1 se la tariffa non è definita.
      */
     public static double getPrezzoFila(int indiceFila, LocalDate data) {
         List<FilaOmbrelloni> file = fileOrdinatePerMappa();
@@ -565,15 +535,14 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Nome della stagione in cui cade la data scelta (per la GUI).
+     * Nome della stagione in cui cade la data scelta.
      */
     public static String getNomeStagione(LocalDate data) {
         return stagionePerData(data).getEtichetta();
     }
 
     /*
-     * File ordinate per la mappa: per posizione (prima → intermedia → ultima),
-     * poi per numero. L'ordine riflette la distanza dal mare.
+     * File ordinate per la mappa: prima per posizione (prima -> intermedia -> ultima) e poi per numero
      */
     private static List<FilaOmbrelloni> fileOrdinatePerMappa() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
@@ -588,43 +557,19 @@ public class GestoreStabilimento {
         return ombrelloni;
     }
 
-    // ===== Effettua prenotazione =====
-    //
-    // Operazioni del caso d'uso Effettua Prenotazione (estensione di
-    // Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e
-    // servizi con valori semplici (email, id): nessuna Entity attraversa il
-    // confine B/C.
+    /* EFFETTUA PRENOTAZIONE
+     *
+     * Operazioni del caso d'uso Effettua Prenotazione (estensione di
+     * Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e
+     * servizi con valori semplici (email, id)
+
 
     /*
-     * Servizi che il cliente può prenotare per la data scelta: quelli con
-     * disponibilità residua positiva E con una tariffa definita per la stagione
-     * di quella data; gli altri non sono mostrati.
-     */
-    private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
-        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-        Stagione stagione = stagionePerData(data);
-        List<ServizioAggiuntivo> selezionabili = new ArrayList<>();
-
-        for (ServizioAggiuntivo servizio : serviziOrdinati()) {
-            boolean disponibile = registroPrenotazioni.residuoServizio(servizio, data) > 0;
-            boolean tariffato = costoServizio(servizio, stagione) >= 0;
-            if (disponibile && tariffato) {
-                selezionabili.add(servizio);
-            }
-        }
-
-        return selezionabili;
-    }
-
-    /*
-     * Servizi prenotabili per la data, in un'unica chiamata: una riga per
-     * servizio, con chiavi
-     *   "descrizione" — descrizione del servizio;
-     *   "id"          — id che identifica il servizio scelto nella prenotazione;
-     *   "residuo"     — quantità massima ordinabile (dato derivato dalle
-     *                   prenotazioni attive);
-     *   "prezzo"      — prezzo unitario per la stagione della data
-     * (i valori numerici come stringhe). Nessuna Entity verso il Boundary.
+     * Servizi prenotabili per la data: una riga per servizio, con chiavi
+     *   "descrizione": descrizione del servizio;
+     *   "id": identifica il servizio scelto nella prenotazione;
+     *   "residuo": quantità massima ordinabile (derivato dalle prenotazioni attive);
+     *   "prezzo": prezzo per la stagione della data
      */
     public static List<Map<String, String>> getServiziPrenotabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -643,18 +588,24 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo dell'ombrellone (dal tipo della sua fila) per la stagione della
-     * data; -1 se la tariffa non è definita o l'ombrellone non esiste. Il
-     * Boundary lo ottiene tramite getPrezzoTotale (senza servizi).
+     * Servizi che il cliente può prenotare per la data scelta: quelli con
+     * disponibilità residua positiva e con una tariffa definita per la stagione
+     * di quella data.
      */
-    private static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
-        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
+    private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
+        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
+        Stagione stagione = stagionePerData(data);
+        List<ServizioAggiuntivo> selezionabili = new ArrayList<>();
 
-        if (ombrellone == null || ombrellone.getFila() == null) {
-            return -1;
+        for (ServizioAggiuntivo servizio : serviziOrdinati()) {
+            boolean disponibile = registroPrenotazioni.residuoServizio(servizio, data) > 0;
+            boolean tariffato = costoServizio(servizio, stagione) >= 0;
+            if (disponibile && tariffato) {
+                selezionabili.add(servizio);
+            }
         }
 
-        return costoTipoFila(ombrellone.getFila().getTipoFila(), stagionePerData(data));
+        return selezionabili;
     }
 
     /*
@@ -663,7 +614,7 @@ public class GestoreStabilimento {
      * definite (-1) non incidono sul totale.
      */
     public static double getPrezzoTotale(long idOmbrellone, long[] idServiziScelti,
-                                      int[] quantita, LocalDate data) {
+                                         int[] quantita, LocalDate data) {
         double totale = Math.max(0, prezzoOmbrellone(idOmbrellone, data));
 
         if (idServiziScelti != null && quantita != null
@@ -685,14 +636,24 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Caso d'uso Effettua Prenotazione.
-     *
-     * Risolve cliente (per email) e ombrellone (per id) e costruisce la mappa
-     * servizio→quantità (solo quantità positive). Verifica i conflitti
-     * interrogando il RegistroPrenotazioni (Information Expert) — disponibilità
-     * dell'ombrellone (estensione 2.a) e residuo dei servizi (estensione 3.1.a)
-     * — e ne mappa l'esito in un codice per il Boundary, poi delega la creazione
-     * al Registro: i conflitti sono query di dominio, non eccezioni di controllo.
+     * Prezzo dell'ombrellone dal tipo della sua fila per la stagione della
+     * data. Restituisce -1 se la tariffa non è definita o l'ombrellone non esiste.
+     */
+    private static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
+        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
+
+        if (ombrellone == null || ombrellone.getFila() == null) {
+            return -1;
+        }
+
+        return costoTipoFila(ombrellone.getFila().getTipoFila(), stagionePerData(data));
+    }
+
+    /*
+     * Trova il cliente e l'ombrellone e costruisce la mappa
+     * servizio→quantità. Verifica i conflitti interrogando il RegistroPrenotazioni
+     * per la disponibilità dell'ombrellone e il residuo dei servizi. Restituisce
+     * l'esito in un codice per il Boundary e delega la creazione al Registro.
      */
     public static int effettuaPrenotazione(String emailCliente, long idOmbrellone,
                                            LocalDate data, long[] idServiziScelti, int[] quantita) {
@@ -728,7 +689,7 @@ public class GestoreStabilimento {
             }
         }
 
-        // Prezzo "congelato" al momento della prenotazione, alle tariffe vigenti.
+
         double totale = getPrezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
 
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -749,8 +710,6 @@ public class GestoreStabilimento {
                 return ERRORE_PRENOTAZIONE;
             }
 
-            // La notifica è innescata dal Boundary alla conferma (vedi
-            // getMessaggioNotificaPrenotazione): qui si restituisce solo l'esito.
             return PRENOTAZIONE_OK;
 
         } catch (RuntimeException e) {
@@ -759,7 +718,6 @@ public class GestoreStabilimento {
         }
     }
 
-    // --- Helper di prezzo / risoluzione ---
 
     private static Cliente clientePerEmail(String email) {
         return new RegistroUtenti().cercaUtentePerEmail(email) instanceof Cliente cliente
@@ -786,27 +744,23 @@ public class GestoreStabilimento {
         return -1;
     }
 
-    // ===== Gestione prenotazioni personali =====
-    //
-    // Operazioni del caso d'uso Gestione prenotazioni personali (attore
-    // ClienteAutenticato): consultazione dello storico e annullamento entro il
-    // limite temporale. Il Boundary identifica il cliente con l'email e la
-    // prenotazione con il suo id.
+    /* GESTIONE PRENOTAZIONI PERSONALI
+     *
+     * Operazioni del caso d'uso Gestione prenotazioni personali (attore
+     * ClienteAutenticato): consultazione dello storico e annullamento entro il
+     * limite temporale. Il Boundary identifica il cliente con l'email e la
+    /* prenotazione con il suo id.
 
     /*
-     * Storico del cliente in un'unica chiamata: una riga per prenotazione, in
+     * Storico del cliente: una riga per prenotazione, in
      * ordine deterministico (per data, poi per id), con chiavi
-     *   "data"        — data prenotata (dd/MM/yyyy);
-     *   "postazione"  — postazione scelta ("Ombrellone n. X (Fila Y)");
-     *   "servizi"     — servizi aggiuntivi con quantità, o "nessuno";
-     *   "stato"       — nome dello stato (Prenotata/Annullata);
-     *   "prezzo"      — prezzo totale;
-     *   "id"          — id della prenotazione;
-     *   "annullabile" — "true"/"false": indica se l'annullamento è possibile
-     *                   oggi (stato Prenotata e oggi < data); il Boundary la usa
-     *                   per abilitare/disabilitare l'annullamento
-     * (i valori non testuali come stringhe). Lista vuota se l'email non
-     * corrisponde a un cliente. Nessuna Entity verso il Boundary.
+     *   "data"`: data prenotata;
+     *   "postazione": postazione scelta ("Ombrellone n. X (Fila Y)");
+     *   "servizi": servizi aggiuntivi con quantità, o "nessuno";
+     *   "stato": nome dello stato (Prenotata/Annullata);
+     *   "prezzo": prezzo totale;
+     *   "id": id della prenotazione;
+     *   "annullabile": true se l'annullamento è possibile (stato Prenotata e oggi < data), altrimenti false
      */
     public static List<Map<String, String>> getPrenotazioniCliente(String emailCliente) {
         Cliente cliente = clientePerEmail(emailCliente);
@@ -840,12 +794,11 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Caso d'uso Gestione prenotazioni personali — Annullamento prenotazione.
-     *
-     * Risolve cliente (per email) e prenotazione (per id), verifica che la
+     * Annullamento prenotazione.
+     * Ottiene cliente per email e prenotazione per id e verifica che la
      * prenotazione appartenga a quel cliente e che sia annullabile entro il
-     * limite temporale, poi delega al RegistroPrenotazioni la transizione ad
-     * Annullata e il salvataggio. Restituisce un codice di esito per il Boundary.
+     * limite temporale. Delega al RegistroPrenotazioni la transizione ad
+     * Annullata e il salvataggio.
      */
     public static int annullaPrenotazione(String emailCliente, long idPrenotazione) {
         if (emailCliente == null) {
@@ -873,8 +826,6 @@ public class GestoreStabilimento {
         try {
             new RegistroPrenotazioni().annullaPrenotazione(prenotazione);
 
-            // La notifica è innescata dal Boundary alla conferma (vedi
-            // getMessaggioNotificaAnnullamento): qui si restituisce solo l'esito.
             return ANNULLAMENTO_OK;
 
         } catch (RuntimeException e) {
@@ -904,7 +855,7 @@ public class GestoreStabilimento {
 
     /*
      * Servizi aggiuntivi di una prenotazione, con quantità ("2 x Lettino,
-     * 1 x Cabina"); stringa vuota se non ci sono servizi.
+     * 1 x Cabina"), o stringa vuota se non ci sono servizi.
      */
     private static String descriviServizi(Prenotazione prenotazione) {
         StringBuilder servizi = new StringBuilder();
@@ -920,8 +871,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Verifica che la prenotazione appartenga al cliente indicato (confronto per
-     * id: gli oggetti provengono da caricamenti distinti).
+     * Verifica che la prenotazione appartenga al cliente indicato
      */
     private static boolean appartieneA(Prenotazione prenotazione, Cliente cliente) {
         return prenotazione.getCliente() != null
@@ -929,17 +879,16 @@ public class GestoreStabilimento {
                 && prenotazione.getCliente().getId().equals(cliente.getId());
     }
 
-    // --- Notifica (testo del messaggio per il Boundary, che innesca la chiamata al canale) ---
+    /*
+     * NOTIFICA
+     */
 
     private static final DateTimeFormatter FORMATO_DATA_NOTIFICA =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /*
-     * Corpo (testo) della notifica di conferma, composto dagli stessi input della
-     * prenotazione appena effettuata. Il Boundary lo richiede dopo l'esito OK e
-     * lo passa, col destinatario che già conosce, al proprio Adapter; null se i
-     * dati non sono risolvibili (il Boundary salta la notifica). Attraversa il
-     * confine solo una String: nessuna Entity né oggetto di trasferimento.
+     * Body della notifica di conferma/annullamento.
+     * Il Boundary li richiede dopo l'esito OK e li passa al proprio Adapter.
      */
     public static String getMessaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
                                                         LocalDate data, long[] idServizi, int[] quantita) {
@@ -949,8 +898,6 @@ public class GestoreStabilimento {
             return null;
         }
 
-        // Mappa servizio -> quantità (solo quantità positive; i servizi non
-        // risolvibili sono semplicemente ignorati nel messaggio).
         Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
         if (idServizi != null && quantita != null && idServizi.length == quantita.length) {
             for (int i = 0; i < idServizi.length; i++) {
@@ -970,10 +917,6 @@ public class GestoreStabilimento {
         return componiCorpoConferma(prenotazione);
     }
 
-    /*
-     * Corpo (testo) della notifica di annullamento per la prenotazione indicata,
-     * se appartiene al cliente; null se non risolvibile o non di proprietà.
-     */
     public static String getMessaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
         Cliente cliente = clientePerEmail(emailCliente);
         if (cliente == null) {
@@ -987,7 +930,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Testo della conferma: saluto, ombrellone, data, servizi inclusi e totale.
+     * Testo della conferma.
      */
     private static String componiCorpoConferma(Prenotazione prenotazione) {
         StringBuilder corpo = new StringBuilder();
@@ -1013,7 +956,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Testo dell'annullamento: saluto, ombrellone e data.
+     * Testo dell'annullamento.
      */
     private static String componiCorpoAnnullamento(Prenotazione prenotazione) {
         StringBuilder corpo = new StringBuilder();
@@ -1027,7 +970,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Riga di saluto iniziale ("Gentile <nome cognome>,") comune ai due messaggi.
+     * Riga di saluto iniziale.
      */
     private static void intestazione(StringBuilder corpo, Cliente cliente) {
         if (cliente != null && cliente.getNome() != null) {

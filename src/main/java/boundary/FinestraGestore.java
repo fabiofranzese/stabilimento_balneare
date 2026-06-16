@@ -10,13 +10,8 @@ import java.awt.event.WindowEvent;
  * FinestraGestore è la schermata dell'area riservata al Gestore autenticato.
  *
  * Espone i casi d'uso del Gestore: Configurazione stabilimento e Definizione
- * tariffe.
+ * tariffe (questa è disponibile solo dopo aver configurato lo stabilimento).
  *
- * La Definizione tariffe è disponibile solo dopo aver configurato lo
- * stabilimento: il relativo pulsante è abilitato solo se esiste almeno una fila.
- *
- * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FinestraGestore.form):
- * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
  */
 public class FinestraGestore {
 
@@ -28,16 +23,13 @@ public class FinestraGestore {
     private JFrame frame;
 
     public FinestraGestore() {
-        // Apre il caso d'uso Configurazione stabilimento, nascondendo quest'area:
-        // verrà rimostrata al termine (o all'annullamento) della configurazione.
-        // La riconfigurazione è distruttiva: se esistono prenotazioni attive il
-        // salvataggio viene rifiutato dal Controller e il form mostra l'errore.
+        // Apre il caso d'uso Configurazione stabilimento.
         bottoneConfiguraStabilimento.addActionListener(e -> {
             frame.setVisible(false);
             new FormConfigurazioneStabilimento(frame).apri();
         });
 
-        // Apre il caso d'uso Definizione tariffe, con la stessa logica.
+        // Apre il caso d'uso Definizione tariffe.
         bottoneDefinisciTariffe.addActionListener(e -> {
             frame.setVisible(false);
             new FormDefinizioneTariffe(frame).apri();
@@ -54,14 +46,11 @@ public class FinestraGestore {
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                // Anche chiudendo l'area si torna alla schermata principale.
                 new FinestraPrincipale().apri();
             }
 
             @Override
             public void windowActivated(WindowEvent e) {
-                // A ogni ritorno su quest'area (es. dopo aver configurato lo
-                // stabilimento) si riallinea la disponibilità delle tariffe.
                 aggiornaDisponibilitaTariffe();
             }
         });
@@ -73,8 +62,7 @@ public class FinestraGestore {
     }
 
     /*
-     * La definizione tariffe ha senso solo a stabilimento configurato: il
-     * pulsante è abilitato unicamente se la configurazione è stata effettuata.
+     * Implementazione precondizione Definizione Tariffe.
      */
     private void aggiornaDisponibilitaTariffe() {
         bottoneDefinisciTariffe.setEnabled(GestoreStabilimento.isConfigurazioneEffettuata());

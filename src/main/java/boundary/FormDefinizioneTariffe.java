@@ -10,22 +10,12 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * FormDefinizioneTariffe è il Boundary (BCED) del caso d'uso Definizione tariffe.
- *
- * Interfaccia realizzata con l'IntelliJ GUI Designer
- * (FormDefinizioneTariffe.form): i campi sotto sono bindati al form e istanziati
- * da IntelliJ in compilazione (metodo generato $$$setupUI$$$), prima del corpo
- * del costruttore.
- *
+ * FormDefinizioneTariffe è il Boundary del caso d'uso Definizione tariffe.
  * Il gestore sceglie un elemento (un tipo di ombrellone o un servizio
- * aggiuntivo), una stagione e un costo, e li aggiunge a un elenco; può anche
- * rimuovere voci dall'elenco. Alla conferma l'elenco viene inviato al Controller,
- * che lo tratta come stato desiderato completo: imposta o aggiorna i prezzi
- * presenti ed elimina le tariffe non più nell'elenco. Sia le modifiche sia le
- * rimozioni si applicano dunque solo al salvataggio.
- * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
- * GestoreStabilimento e scambia solo tipi primitivi/array e righe di stringhe
- * a chiavi.
+ * aggiuntivo), una stagione e un costo, e li aggiunge a un elenco.
+ * Può anche rimuovere voci dall'elenco.
+ * Alla conferma l'elenco viene inviato al Controller, che imposta o aggiorna i prezzi
+ * presenti ed elimina le tariffe non più nell'elenco.
  */
 public class FormDefinizioneTariffe {
 
@@ -38,19 +28,14 @@ public class FormDefinizioneTariffe {
     private JList<String> listaTariffe;
     private JButton bottoneSalva;
 
-    // Finestra da cui si è aperta la definizione tariffe (l'area Gestore),
-    // nascosta mentre questo form è aperto: viene rimostrata al salvataggio o
-    // alla chiusura.
     private final JFrame finestraChiamante;
     private JFrame frame;
 
-    // Etichette degli elementi e delle stagioni (dal Controller), usate per le
-    // combo e per l'elenco.
+    // Etichette degli elementi e delle stagioni (dal Controller), usate per la combo e per l'elenco.
     private final String[] etichetteElemento = GestoreStabilimento.getElementiTariffa();
     private final String[] etichetteStagione = GestoreStabilimento.getStagioni();
 
-    // Stato in memoria delle tariffe in corso di definizione (array paralleli),
-    // con al più una voce per ogni coppia (elemento, stagione).
+    // Stato in memoria delle tariffe in corso di definizione.
     private final List<Integer> elementi = new ArrayList<>();
     private final List<Integer> stagioni = new ArrayList<>();
     private final List<Double> costi = new ArrayList<>();
@@ -77,14 +62,12 @@ public class FormDefinizioneTariffe {
         frame = new JFrame("Definizione tariffe");
         frame.setContentPane(pannelloTariffe);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Se l'utente chiude il form senza salvare, si torna all'area Gestore.
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 finestraChiamante.setVisible(true);
             }
         });
-        // Precarica le tariffe già definite, così il gestore le aggiorna.
         precaricaTariffe();
         frame.pack();
         frame.setLocationRelativeTo(null);
@@ -109,7 +92,7 @@ public class FormDefinizioneTariffe {
             return;
         }
 
-        // Upsert in memoria: se esiste già una tariffa per la stessa coppia
+        // Se esiste già una tariffa per la stessa coppia
         // (elemento, stagione), se ne aggiorna il costo; altrimenti la si aggiunge.
         int esistente = trovaTariffa(elemento, stagione);
         if (esistente >= 0) {
@@ -125,8 +108,7 @@ public class FormDefinizioneTariffe {
     }
 
     /*
-     * Toglie la tariffa selezionata dall'elenco in memoria. L'eliminazione dal
-     * database avviene al salvataggio (riconciliazione lato Controller).
+     * Toglie la tariffa selezionata dall'elenco in memoria. L'eliminazione dal database avviene al salvataggio.
      */
     private void rimuoviTariffa() {
         int selezione = listaTariffe.getSelectedIndex();
@@ -180,8 +162,6 @@ public class FormDefinizioneTariffe {
     }
 
     private void precaricaTariffe() {
-        // Una riga per tariffa: "elemento" e "stagione" sono indici, "costo" il
-        // prezzo (tutti come stringhe).
         for (Map<String, String> tariffa : GestoreStabilimento.getTariffeCorrenti()) {
             elementi.add(Integer.parseInt(tariffa.get("elemento")));
             stagioni.add(Integer.parseInt(tariffa.get("stagione")));
@@ -190,11 +170,9 @@ public class FormDefinizioneTariffe {
         aggiornaListaTariffe();
     }
 
-    // --- Utilità ---
-
     /*
-     * Cerca in memoria la tariffa per una coppia (elemento, stagione);
-     * restituisce l'indice nell'elenco oppure -1 se non presente.
+     * Cerca in memoria la tariffa per una coppia (elemento, stagione),
+     * restituendo l'indice nell'elenco oppure -1 se non presente.
      */
     private int trovaTariffa(int elemento, int stagione) {
         for (int i = 0; i < elementi.size(); i++) {
@@ -205,10 +183,6 @@ public class FormDefinizioneTariffe {
         return -1;
     }
 
-    /*
-     * Legge un costo dal campo; restituisce -1 se il testo non è un numero
-     * valido, così il controllo sul minimo (> 0) intercetta l'errore.
-     */
     private double leggiCosto(JTextField campo) {
         try {
             return Double.parseDouble(campo.getText().trim().replace(',', '.'));

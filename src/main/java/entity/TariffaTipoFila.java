@@ -3,9 +3,8 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * TariffaTipoFila è il prezzo di un ombrellone in base alla posizione della sua
- * fila (TipoFila), per una certa stagione. Sottoclasse concreta di Tariffa con
- * discriminatore "TIPO_FILA".
+ * TariffaTipoFila è il prezzo di un ombrellone in base alla posizione della sua fila, per una certa stagione.
+ * È sottoclasse concreta di Tariffa con discriminatore "TIPO_FILA".
  */
 @Entity
 @DiscriminatorValue("TIPO_FILA")

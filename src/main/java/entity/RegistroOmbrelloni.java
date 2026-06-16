@@ -7,16 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * RegistroOmbrelloni è il servizio di dominio per la disposizione degli
- * ombrelloni (livello Entity, BCED).
+ * RegistroOmbrelloni è il servizio per la disposizione degli ombrelloni.
  *
- * Ruoli GRASP:
- * - Creator: è responsabile della creazione delle FilaOmbrelloni (la creazione
- *   dei singoli Ombrellone è delegata alla fila stessa, che li aggrega);
- * - Information Expert: conosce l'insieme delle file, quindi gli compete la loro
- *   ricerca complessiva (getFile).
- *
- * Usa GestorePersistenza (livello Database), come gli altri Registro.
  */
 public class RegistroOmbrelloni {
 
@@ -27,13 +19,10 @@ public class RegistroOmbrelloni {
     }
 
     /*
-     * Caso d'uso Configurazione stabilimento: (ri)definisce la disposizione con
-     * strategia "replace" — la configurazione precedente viene rimossa e
-     * rigenerata. Per ogni fila i (numerata i+1, con ombrelloniPerFila[i]
-     * ombrelloni numerati 1..N) si crea la FilaOmbrelloni; il salvataggio propaga
-     * (cascade) agli ombrelloni. La posizione (prima/intermedia/ultima) non è
-     * scelta dal gestore: arriva già derivata dall'ordine nell'array parallelo
-     * tipiFile (vedi GestoreStabilimento.tipoFilaPerPosizione).
+     * CONFIGURAZIONE STABILIMENTO
+     *
+     * Definisce la disposizione con la seguente strategia:
+     * La configurazione precedente viene rimossa e rigenerata.
      */
     public void configuraDisposizione(TipoFila[] tipiFile, int[] ombrelloniPerFila) {
         eliminaTutteLeFile();
@@ -51,16 +40,14 @@ public class RegistroOmbrelloni {
     }
 
     /*
-     * Information Expert: cerca un ombrellone per id (null se inesistente). Esposto
-     * perché il Controller risolva le entità tramite il Registro (livello Entity),
-     * senza accedere direttamente al livello Database.
+     * Cerca un ombrellone per id (null se inesistente).
      */
     public Ombrellone trovaOmbrellone(long id) {
         return gestorePersistenza.trovaPerId(Ombrellone.class, id);
     }
 
     /*
-     * Information Expert: restituisce tutte le file, ordinate per numero.
+     * Restituisce tutte le file, ordinate per numero.
      */
     public List<FilaOmbrelloni> getFile() {
         List<FilaOmbrelloni> file = gestorePersistenza.cercaPerCampi(FilaOmbrelloni.class, Map.of());
@@ -69,8 +56,7 @@ public class RegistroOmbrelloni {
     }
 
     /*
-     * Rimuove tutte le file esistenti; l'eliminazione propaga (cascade +
-     * orphanRemoval) ai relativi ombrelloni.
+     * Rimuove tutte le file esistenti, con l'eliminazione che propaga ai relativi ombrelloni.
      */
     private void eliminaTutteLeFile() {
         for (FilaOmbrelloni fila : getFile()) {

@@ -7,15 +7,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 /*
- * FormRegistrazione è il Boundary (BCED) del caso d'uso Registrazione.
- *
- * L'interfaccia è realizzata con l'IntelliJ GUI Designer: la disposizione dei
- * componenti è descritta nel file FormRegistrazione.form e i campi sotto sono
- * "bindati" a quel form. È IntelliJ, in fase di compilazione, a istanziare i
- * componenti (metodo generato $$$setupUI$$$) prima del corpo del costruttore.
- *
- * Questa classe contiene solo l'interazione con l'utente: delega ogni logica al
- * Controller GestoreUtenti e non accede né al dominio né alla persistenza.
+ * FormRegistrazione è il Boundary del caso d'uso Registrazione.
  */
 public class FormRegistrazione {
 
@@ -27,8 +19,6 @@ public class FormRegistrazione {
     private JPasswordField campoPassword;
     private JButton bottoneRegistrati;
 
-    // Finestra da cui si è aperta la registrazione (la schermata principale),
-    // nascosta mentre questo form è aperto: viene rimostrata se il form si chiude.
     private final JFrame finestraChiamante;
     private JFrame frame;
 
@@ -37,16 +27,10 @@ public class FormRegistrazione {
         bottoneRegistrati.addActionListener(e -> eseguiRegistrazione());
     }
 
-    /*
-     * Costruisce e mostra la finestra di registrazione a partire dal pannello
-     * definito nel form.
-     */
     public JFrame apri() {
         frame = new JFrame("Registrazione");
         frame.setContentPane(pannelloRegistrazione);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Se l'utente chiude il form senza registrarsi, si torna alla schermata
-        // principale (la finestra chiamante).
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -71,24 +55,17 @@ public class FormRegistrazione {
 
         switch (esito) {
             case GestoreUtenti.REGISTRAZIONE_OK:
-                // La registrazione effettua direttamente l'accesso: l'utente
-                // entra subito nell'area Cliente, senza dover accedere di nuovo.
-                // Si propaga l'email appena registrata (identità del cliente).
-                // La schermata principale non serve più.
                 finestraChiamante.dispose();
                 frame.dispose();
                 new FinestraCliente(email).apri();
                 break;
 
             case GestoreUtenti.EMAIL_GIA_REGISTRATA:
-                // Il flusso prevede di indirizzare l'utente già registrato all'accesso.
                 int scelta = JOptionPane.showConfirmDialog(frame,
                         "Esiste già un account con questa email. Vuoi accedere?",
                         "Email già registrata", JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE);
                 if (scelta == JOptionPane.YES_OPTION) {
-                    // Si passa all'accesso mantenendo la stessa finestra chiamante
-                    // (la principale, che resta nascosta) e precompilando l'email.
                     frame.dispose();
                     new FormAccesso(finestraChiamante, email).apri();
                 }

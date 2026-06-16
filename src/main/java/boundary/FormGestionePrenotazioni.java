@@ -12,26 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * FormGestionePrenotazioni è il Boundary (BCED) del caso d'uso Gestione
- * prenotazioni personali.
- *
- * Realizza le due interazioni «include» del flusso: la Visualizzazione delle
- * prenotazioni personali (l'elenco dello storico del cliente) e l'Annullamento
- * di una prenotazione (entro il limite temporale).
- *
- * L'interfaccia è organizzata come una vista "elenco + dettaglio" (come la mappa
- * degli ombrelloni): a sinistra una lista che riporta solo la data di ciascuna
- * prenotazione; selezionandone una se ne vedono i dettagli (data, postazione,
- * servizi, stato, prezzo) e, se ancora annullabile, la si può annullare.
- *
- * Interfaccia realizzata con l'IntelliJ GUI Designer
- * (FormGestionePrenotazioni.form): i campi sotto sono bindati al form e
- * istanziati da IntelliJ in compilazione (metodo generato $$$setupUI$$$), prima
- * del corpo del costruttore.
- *
- * Questa classe contiene solo l'interazione con l'utente: delega ogni logica a
- * GestoreStabilimento e scambia solo tipi semplici (email, id, righe di
- * stringhe a chiavi). Non conosce le Entity, nel rispetto della separazione BCED.
+ * FormGestionePrenotazioni è il Boundary del caso d'uso Gestione prenotazioni personali.
  */
 public class FormGestionePrenotazioni {
 
@@ -46,25 +27,16 @@ public class FormGestionePrenotazioni {
     private JButton bottoneAnnulla;
     private JButton bottoneChiudi;
 
-    // Finestra da cui si è aperta la gestione (l'area Cliente), nascosta mentre
-    // questo form è aperto: viene rimostrata alla chiusura.
     private final JFrame finestraChiamante;
     private JFrame frame;
 
-    // Identità del cliente autenticato (propagata come email, non come Entity).
     private final String emailCliente;
 
     private final DefaultListModel<String> modelloPrenotazioni = new DefaultListModel<>();
 
-    // Prenotazioni mostrate, allineate per indice alle voci della lista (ordine
-    // deciso dal Controller): una riga per prenotazione, con chiavi "data",
-    // "postazione", "servizi", "stato", "prezzo", "id" e "annullabile" (i valori
-    // non testuali come stringhe). La lista mostra data e stato, le altre chiavi
-    // popolano il dettaglio della prenotazione selezionata.
     private List<Map<String, String>> prenotazioni = List.of();
 
-    // Adapter verso il sistema esterno di notifica: è il Boundary a chiamare il
-    // canale, alla conferma dell'annullamento.
+    // Adapter verso il sistema esterno di notifica.
     private final AdapterServizioNotifica notificatore =
             new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 
@@ -74,14 +46,12 @@ public class FormGestionePrenotazioni {
 
         listaPrenotazioni.setModel(modelloPrenotazioni);
         listaPrenotazioni.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        // Alla selezione di una prenotazione se ne mostra il dettaglio.
         listaPrenotazioni.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 mostraDettaglio();
             }
         });
 
-        // L'avviso "non più annullabile" è evidenziato in rosso.
         etichettaAvviso.setForeground(new Color(0xC62828));
 
         bottoneAnnulla.addActionListener(e -> annulla());
@@ -94,7 +64,6 @@ public class FormGestionePrenotazioni {
         frame = new JFrame("Gestione prenotazioni");
         frame.setContentPane(pannelloGestionePrenotazioni);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Chiudendo la finestra si torna all'area Cliente.
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -111,9 +80,7 @@ public class FormGestionePrenotazioni {
     }
 
     /*
-     * Carica (o ricarica) l'elenco delle prenotazioni del cliente dal Controller.
-     * La lista mostra solo le date; gli array paralleli alimentano il dettaglio.
-     * Estensione 2.a: se il cliente non ha prenotazioni, lo segnala.
+     * Carica l'elenco delle prenotazioni del cliente dal Controller.
      */
     private void caricaPrenotazioni() {
         prenotazioni = GestoreStabilimento.getPrenotazioniCliente(emailCliente);
@@ -136,7 +103,7 @@ public class FormGestionePrenotazioni {
 
     /*
      * Mostra il dettaglio della prenotazione selezionata e abilita "Annulla" solo
-     * se la prenotazione è ancora annullabile (stato Prenotata ed entro il limite).
+     * se la prenotazione è ancora annullabile.
      */
     private void mostraDettaglio() {
         int selezione = listaPrenotazioni.getSelectedIndex();
@@ -158,9 +125,6 @@ public class FormGestionePrenotazioni {
 
         bottoneAnnulla.setEnabled(annullabile);
 
-        // Se la prenotazione è ancora attiva (Prenotata) ma non più annullabile,
-        // è scaduto il limite temporale: lo si segnala sopra il pulsante Annulla.
-        // Per una prenotazione già Annullata lo stato è già esplicito.
         if (!annullabile && "Prenotata".equals(riga.get("stato"))) {
             etichettaAvviso.setText("Non più annullabile: è oltre il limite temporale.");
         } else {
@@ -169,9 +133,9 @@ public class FormGestionePrenotazioni {
     }
 
     /*
-     * Annulla la prenotazione selezionata: verifica preliminarmente
-     * l'annullabilità (per un messaggio immediato), poi invia la richiesta al
-     * Controller e gestisce l'esito.
+     * Annulla la prenotazione selezionata, verificando l'annullabilità,
+     * inviando la richiesta al Controller, gestendo l'esito
+     * ed eventualmente innescando la notifica.
      */
     private void annulla() {
         int selezione = listaPrenotazioni.getSelectedIndex();
@@ -183,9 +147,6 @@ public class FormGestionePrenotazioni {
             return;
         }
 
-        // Controllo anticipato: prenotazione non annullabile (già annullata o oltre
-        // il limite temporale). Il Controller ricontrolla comunque (difesa in
-        // profondità), ma così l'utente ha subito il messaggio.
         if (!Boolean.parseBoolean(prenotazioni.get(selezione).get("annullabile"))) {
             JOptionPane.showMessageDialog(frame,
                     "Questa prenotazione non può essere annullata:\n"
@@ -207,9 +168,8 @@ public class FormGestionePrenotazioni {
 
         switch (esito) {
             case GestoreStabilimento.ANNULLAMENTO_OK: {
-                // Ricevuta la conferma, il Boundary innesca la notifica al sistema
-                // esterno: chiede al Controller il testo del messaggio e lo invia
-                // al destinatario (l'email del cliente autenticato) tramite l'Adapter.
+                // Ricevuta la conferma, il Boundary innesca chiedendo al Controller
+                // il testo del messaggio e inviandolo tramite l'Adapter.
                 String corpoNotifica = GestoreStabilimento.getMessaggioNotificaAnnullamento(emailCliente, idAnnullata);
                 if (corpoNotifica != null) {
                     notificatore.prenotazioneAnnullata(emailCliente, corpoNotifica);
@@ -245,10 +205,6 @@ public class FormGestionePrenotazioni {
         }
     }
 
-    /*
-     * Azzera il pannello di dettaglio (nessuna prenotazione selezionata) e
-     * disabilita l'annullamento.
-     */
     private void resetDettaglio() {
         if (!prenotazioni.isEmpty()) {
             etichettaData.setText("Seleziona una prenotazione");

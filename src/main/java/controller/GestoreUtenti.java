@@ -6,13 +6,8 @@ import entity.RegistroUtenti;
 import entity.Utente;
 
 /*
- * GestoreUtenti è il Controller (GRASP) dei casi d'uso Registrazione e
- * Accesso al sistema, e funge da Façade tra il Boundary (le finestre Swing)
- * e il dominio (RegistroUtenti).
- *
- * Espone operazioni a grana grossa e restituisce semplici codici interi: il
- * Boundary non conosce le Entity (Cliente, Gestore, Utente) e non importa il
- * package entity, rispettando la separazione BCED.
+ * GestoreUtenti è il Controller dei casi d'uso Registrazione e
+ * Accesso al sistema, e fa da Façade tra il Boundary e RegistroUtenti
  */
 public class GestoreUtenti {
 
@@ -31,10 +26,10 @@ public class GestoreUtenti {
     private static final int LUNGHEZZA_MINIMA_PASSWORD = 6;
 
     /*
-     * Caso d'uso Registrazione.
+     * REGISTRAZIONE
      *
      * 1. valida i dati inseriti (campi non vuoti, email ben formata, password valida);
-     * 2. se l'email è già registrata, segnala che si deve procedere con l'accesso;
+     * 2. se l'email è già registrata, si deve procede con l'accesso;
      * 3. altrimenti crea l'account Cliente.
      */
     public static int registra(String nome, String cognome, String email,
@@ -46,7 +41,6 @@ public class GestoreUtenti {
 
         RegistroUtenti registroUtenti = new RegistroUtenti();
 
-        // Se l'email esiste già, il flusso prevede di indirizzare l'utente all'accesso.
         if (registroUtenti.isEmailEsistente(email)) {
             return EMAIL_GIA_REGISTRATA;
         }
@@ -61,7 +55,7 @@ public class GestoreUtenti {
     }
 
     /*
-     * Caso d'uso Accesso al sistema.
+     * ACCESSO AL SISTEMA
      *
      * Verifica le credenziali e, in base al ruolo associato all'account,
      * restituisce l'esito di login per Cliente o per Gestore.
@@ -83,13 +77,12 @@ public class GestoreUtenti {
             return LOGIN_GESTORE;
         }
 
-        // Ramo difensivo: un Utente senza ruolo riconosciuto non dovrebbe esistere.
         return CREDENZIALI_ERRATE;
     }
 
     /*
-     * Validazione dei dati di registrazione (passo "verifica i dati inseriti"
-     * del diagramma di sequenza). Tutti i campi devono essere non vuoti, l'email
+     * Validazione dei dati di registrazione:
+     * tutti i campi devono essere non vuoti, l'email
      * ben formata e la password di lunghezza minima.
      */
     private static boolean isDatiValidi(String nome, String cognome, String email,
@@ -120,20 +113,22 @@ public class GestoreUtenti {
     }
 
     /*
-     * Controllo essenziale del formato dell'email: presenza di una sola @,
-     * con testo prima e un dominio con punto dopo.
+     * Controllo del formato dell'email tramite regular expression.
      */
     private static boolean isEmailFormatoValido(String email) {
         return email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     }
 
     /*
-     * Il recapito telefonico deve contenere solo cifre (una o più).
+     * Controllo del recapito telefonico
      */
     private static boolean isTelefonoValido(String telefono) {
         return telefono.matches("\\d+");
     }
 
+    /*
+     * Controllo della lunghezza della password
+     */
     private static boolean isPasswordValida(String password) {
         return password.length() >= LUNGHEZZA_MINIMA_PASSWORD;
     }

@@ -14,20 +14,9 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * FormVisualizzazioneMappa è il Boundary (BCED) del caso d'uso Visualizzazione
- * Mappa: il Cliente sceglie una data e vede la mappa degli ombrelloni, con le
- * postazioni evidenziate come disponibili (verde) o occupate (rosso) per quella
- * data.
- *
- * La struttura del form (selettore data, pulsante, area mappa, pannello di
- * dettaglio) è descritta nel file .form (IntelliJ GUI Designer); la mappa vera e
- * propria è invece costruita a runtime nel pannelloMappa, perché dipende dai dati
- * (numero di file e ombrelloni). Cliccando un ombrellone se ne vedono i dettagli
- * (numero, fila, prezzo, disponibilità) e si abilita "Prenota" se è disponibile.
- *
- * Scambia con il Controller solo tipi del JDK (primitivi/array, LocalDate e
- * righe di stringhe a chiavi): non conosce le Entity, nel rispetto della
- * separazione BCED.
+ * FormVisualizzazioneMappa è il Boundary del caso d'uso Visualizzazione Mappa.
+ * Il Cliente sceglie una data e vede la mappa degli ombrelloni, con le
+ * postazioni evidenziate come disponibili (verde) o occupate (rosso) per quella data.
  */
 public class FormVisualizzazioneMappa {
 
@@ -41,22 +30,14 @@ public class FormVisualizzazioneMappa {
     private JLabel etichettaDisponibilita;
     private JButton bottonePrenota;
 
-    // Colori delle celle della mappa.
     private static final Color COLORE_LIBERO = new Color(0x81C784);
     private static final Color COLORE_OCCUPATO = new Color(0xE57373);
-
-    // Larghezza fissa dell'etichetta di fila: la tiene a sinistra e, bilanciata da
-    // uno spazio uguale a destra, lascia gli ombrelloni centrati nella riga.
     private static final int LARGHEZZA_ETICHETTA_FILA = 70;
 
-    // Finestra da cui si è aperta la mappa (l'area Cliente), nascosta mentre
-    // questo form è aperto: viene rimostrata alla chiusura.
     private final JFrame finestraChiamante;
-    // Email del cliente autenticato, propagata al caso d'uso Effettua Prenotazione.
     private final String emailCliente;
     private JFrame frame;
 
-    // Data per cui è mostrata la mappa e ombrellone attualmente selezionato.
     private LocalDate dataCorrente;
     private long idOmbrelloneSelezionato = -1;
     private int numeroSelezionato = -1;
@@ -67,13 +48,10 @@ public class FormVisualizzazioneMappa {
         this.finestraChiamante = finestraChiamante;
         this.emailCliente = emailCliente;
 
-        // Selettore di data (gg/mm/aaaa) che parte da oggi e non consente di
-        // selezionare date passate: consultare o prenotare nel passato non ha senso.
         Date oggi = aMezzanotte(LocalDate.now());
         selettoreData.setModel(new SpinnerDateModel(oggi, oggi, null, Calendar.DAY_OF_MONTH));
         selettoreData.setEditor(new JSpinner.DateEditor(selettoreData, "dd/MM/yyyy"));
 
-        // La mappa viene impilata per file.
         pannelloMappa.setLayout(new BoxLayout(pannelloMappa, BoxLayout.Y_AXIS));
 
         bottoneMostra.addActionListener(e -> mostraMappa());
@@ -86,7 +64,6 @@ public class FormVisualizzazioneMappa {
         frame = new JFrame("Mappa dello stabilimento");
         frame.setContentPane(pannelloVisualizzazioneMappa);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Chiudendo il form si torna all'area Cliente.
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -95,9 +72,6 @@ public class FormVisualizzazioneMappa {
 
             @Override
             public void windowActivated(WindowEvent e) {
-                // Tornando sulla mappa (es. dopo una prenotazione), si ricalcola la
-                // disponibilità per la data corrente, così la cella appena prenotata
-                // appare occupata. Al primo avvio non c'è ancora una mappa da aggiornare.
                 if (dataCorrente != null) {
                     mostraMappa();
                 }
@@ -130,8 +104,7 @@ public class FormVisualizzazioneMappa {
         pannelloMappa.removeAll();
 
         String[] etichetteFile = GestoreStabilimento.getEtichetteFile();
-        // Una lista per fila, con una riga per ombrellone: chiavi "numero", "id"
-        // e "disponibile" ("true" = libero).
+        // Una lista per fila, con una riga per ombrellone e chiavi "numero", "id" e "disponibile".
         List<List<Map<String, String>>> mappa = GestoreStabilimento.getMappaOmbrelloni(dataCorrente);
 
         if (etichetteFile.length == 0) {
@@ -149,8 +122,7 @@ public class FormVisualizzazioneMappa {
     }
 
     /*
-     * Striscia che rappresenta il mare, mostrata in cima alla mappa (lato delle
-     * prime file).
+     * Striscia che rappresenta il mare.
      */
     private JComponent creaIndicatoreMare() {
         JLabel mare = new JLabel("～ ～ ～ ～ ～   Mare   ～ ～ ～ ～ ～", SwingConstants.CENTER);
@@ -164,10 +136,8 @@ public class FormVisualizzazioneMappa {
     }
 
     /*
-     * Crea la riga grafica di una fila: l'etichetta della fila resta a sinistra
-     * (larghezza fissa) e gli ombrelloni sono centrati nella riga. Uno spazio a
-     * destra, largo quanto l'etichetta, bilancia quest'ultima così le celle
-     * risultano centrate rispetto all'intera mappa.
+     * Crea la riga grafica di una fila, con l'etichetta della fila che resta a sinistra
+     * e gli ombrelloni che sono centrati nella riga.
      */
     private JPanel creaRigaFila(int indiceFila, String etichettaFila,
                                 List<Map<String, String>> ombrelloni) {
@@ -197,15 +167,13 @@ public class FormVisualizzazioneMappa {
 
         riga.add(Box.createHorizontalStrut(LARGHEZZA_ETICHETTA_FILA), BorderLayout.EAST);
 
-        // Riga larga quanto la mappa: BoxLayout la estende e le celle si centrano.
         riga.setMaximumSize(new Dimension(Integer.MAX_VALUE, riga.getPreferredSize().height));
 
         return riga;
     }
 
     /*
-     * Mostra i dettagli dell'ombrellone selezionato e abilita "Prenota" se è
-     * disponibile per la data scelta.
+     * Mostra i dettagli dell'ombrellone selezionato e abilita "Prenota" se è disponibile.
      */
     private void selezionaOmbrellone(int indiceFila, long id, int numero,
                                      String etichettaFilaTesto, boolean disponibile) {
@@ -243,10 +211,7 @@ public class FormVisualizzazioneMappa {
     }
 
     /*
-     * Punto di estensione «extend» verso il caso d'uso Effettua Prenotazione:
-     * apre il form di prenotazione per l'ombrellone selezionato e la data corrente,
-     * nascondendo la mappa. Alla chiusura la mappa torna visibile e si aggiorna
-     * (windowActivated), così l'eventuale nuova prenotazione si riflette subito.
+     * Punto di estensione verso il caso d'uso Effettua Prenotazione.
      */
     private void prenota() {
         if (!ombrellonePrenotabile || idOmbrelloneSelezionato < 0) {
@@ -258,7 +223,6 @@ public class FormVisualizzazioneMappa {
                 numeroSelezionato, etichettaFilaSelezionata, dataCorrente).apri();
     }
 
-    // --- Utilità ---
 
     private void resetDettaglio() {
         idOmbrelloneSelezionato = -1;
@@ -277,10 +241,7 @@ public class FormVisualizzazioneMappa {
         return data.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
-    /*
-     * Converte una data nel Date alla mezzanotte locale, formato atteso dal
-     * SpinnerDateModel.
-     */
+
     private static Date aMezzanotte(LocalDate data) {
         return Date.from(data.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }

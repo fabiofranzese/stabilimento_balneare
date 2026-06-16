@@ -9,9 +9,6 @@ import java.awt.event.WindowEvent;
  *
  * Espone i casi d'uso del Cliente: la Visualizzazione Mappa (da cui si effettua
  * una prenotazione) e la Gestione delle prenotazioni personali.
- *
- * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FinestraCliente.form):
- * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
  */
 public class FinestraCliente {
 
@@ -20,8 +17,6 @@ public class FinestraCliente {
     private JButton bottoneGestionePrenotazioni;
     private JButton bottoneLogout;
 
-    // Email del cliente autenticato (identità propagata dall'accesso): serve ai
-    // casi d'uso che agiscono per conto del cliente, come Effettua Prenotazione.
     private final String emailCliente;
 
     private JFrame frame;
@@ -29,15 +24,13 @@ public class FinestraCliente {
     public FinestraCliente(String emailCliente) {
         this.emailCliente = emailCliente;
 
-        // Apre il caso d'uso Visualizzazione Mappa, nascondendo quest'area:
-        // verrà rimostrata alla chiusura della mappa.
+        // Apre il caso d'uso Visualizzazione Mappa.
         bottoneVisualizzaMappa.addActionListener(e -> {
             frame.setVisible(false);
             new FormVisualizzazioneMappa(frame, emailCliente).apri();
         });
 
-        // Apre il caso d'uso Gestione prenotazioni personali, nascondendo
-        // quest'area: verrà rimostrata alla chiusura del form.
+        // Apre il caso d'uso Gestione prenotazioni personali.
         bottoneGestionePrenotazioni.addActionListener(e -> {
             frame.setVisible(false);
             new FormGestionePrenotazioni(frame, emailCliente).apri();

@@ -9,15 +9,6 @@ import java.util.Map;
 
 /*
  * RegistroUtenti è il servizio di dominio per gli Utenti (livello Entity, BCED).
- *
- * Ruoli GRASP:
- * - Creator: è responsabile della creazione dei Cliente (e dei Gestore di setup);
- * - Information Expert: conosce l'insieme degli Utenti, quindi gli competono il
- *   controllo di unicità dell'email e la verifica delle credenziali.
- *
- * Usa GestorePersistenza (livello Database): la logica di dominio resta qui, il
- * codice tecnico di persistenza nel package database (dipendenza Entity ->
- * Database, idioma del progetto per i servizi Registro).
  */
 public class RegistroUtenti {
 
@@ -28,12 +19,11 @@ public class RegistroUtenti {
     }
 
     /*
+     * REGISTRAZIONE
+     *
      * Crea e salva un nuovo Cliente (caso d'uso Registrazione).
      * La password ricevuta in chiaro viene cifrata prima della memorizzazione.
      * Restituisce il Cliente salvato, oppure null se il salvataggio fallisce.
-     *
-     * Il controllo di unicità dell'email è responsabilità del chiamante
-     * (vedi isEmailEsistente): qui ci si limita alla creazione.
      */
     public Cliente registraCliente(String nome, String cognome, String email,
                                    String telefono, String passwordInChiaro) {
@@ -49,11 +39,7 @@ public class RegistroUtenti {
 
     /*
      * Crea e salva un nuovo Gestore.
-     *
-     * NOTE: nel domain model RegistroUtenti è «Cliente Creator»: la creazione dei
-     * Gestore è fuori dal flusso applicativo. Questo è solo un helper di
-     * bootstrap, invocato dal package setup (DatiIniziali) e non dai casi d'uso;
-     * vive qui per riusare la cifratura della password (cifra()).
+     * Questo è fuori dal flusso applicativo, ma è un helper invocato da DatiIniziali.
      */
     public Gestore registraGestore(String nome, String cognome, String email,
                                    String telefono, String passwordInChiaro) {
@@ -75,8 +61,7 @@ public class RegistroUtenti {
     }
 
     /*
-     * Cerca l'Utente associato a un'email. Restituisce il sottotipo concreto
-     * (Cliente o Gestore) grazie al discriminatore, oppure null se non esiste.
+     * Cerca l'Utente associato a un'email.
      */
     public Utente cercaUtentePerEmail(String email) {
         return gestorePersistenza.cercaPrimoPerCampi(
@@ -87,7 +72,6 @@ public class RegistroUtenti {
 
     /*
      * Verifica le credenziali di accesso (caso d'uso Accesso al sistema).
-     * Restituisce l'Utente se email e password corrispondono, altrimenti null.
      */
     public Utente verificaCredenziali(String email, String passwordInChiaro) {
         Utente utente = cercaUtentePerEmail(email);
@@ -104,8 +88,7 @@ public class RegistroUtenti {
     }
 
     /*
-     * Cifra una password con SHA-256 e la restituisce in formato esadecimale.
-     * Si usa MessageDigest del JDK, senza dipendenze aggiuntive.
+     * Cifra la password con SHA-256.
      */
     private static String cifra(String testo) {
         try {

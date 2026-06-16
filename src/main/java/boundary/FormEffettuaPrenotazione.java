@@ -15,18 +15,12 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * FormEffettuaPrenotazione è il Boundary (BCED) del caso d'uso Effettua
- * Prenotazione, estensione («extend») di Visualizzazione Mappa.
+ * FormEffettuaPrenotazione è il Boundary del caso d'uso Effettua Prenotazione.
  *
  * Mostra il riepilogo dell'ombrellone selezionato (numero, fila, data, prezzo),
  * la lista dei servizi aggiuntivi selezionabili (con prezzo e disponibilità
- * residua) e il totale aggiornato dal vivo. Alla conferma invia la prenotazione
- * al Controller.
- *
- * L'elenco dei servizi è costruito a runtime nel pannelloServizi, perché dipende
- * dai dati (numero e residuo dei servizi per la data). Con il Controller scambia
- * solo tipi semplici (email, id, LocalDate, primitivi e righe di stringhe a
- * chiavi): non conosce le Entity, nel rispetto della separazione BCED.
+ * residua) e il totale.
+ * Alla conferma invia la prenotazione al Controller.
  */
 public class FormEffettuaPrenotazione {
 
@@ -41,8 +35,6 @@ public class FormEffettuaPrenotazione {
 
     private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // Finestra da cui si è aperta la prenotazione (la mappa), nascosta mentre
-    // questo form è aperto: viene rimostrata alla chiusura.
     private final JFrame finestraChiamante;
     private JFrame frame;
 
@@ -53,12 +45,10 @@ public class FormEffettuaPrenotazione {
     private final String etichettaFila;
     private final LocalDate data;
 
-    // Selettori di quantità dei servizi e id corrispondenti (allineati per indice).
     private final List<JSpinner> spinnerServizi = new ArrayList<>();
     private long[] idServiziVisualizzati = new long[0];
 
-    // Adapter verso il sistema esterno di notifica: è il Boundary a chiamare il
-    // canale, alla conferma dell'operazione.
+    // Adapter verso il sistema esterno di notifica.
     private final AdapterServizioNotifica notificatore =
             new AdapterServizioNotifica(new CanaleComunicazioneEsterno());
 
@@ -72,7 +62,6 @@ public class FormEffettuaPrenotazione {
         this.etichettaFila = etichettaFila;
         this.data = data;
 
-        // I servizi vengono impilati verticalmente.
         pannelloServizi.setLayout(new BoxLayout(pannelloServizi, BoxLayout.Y_AXIS));
 
         bottoneConferma.addActionListener(e -> conferma());
@@ -90,12 +79,10 @@ public class FormEffettuaPrenotazione {
             }
         });
 
-        // Riepilogo della postazione scelta.
         etichettaRiepilogoOmbrellone.setText("Ombrellone n. " + numeroOmbrellone);
         etichettaRiepilogoFila.setText(etichettaFila != null ? etichettaFila : "");
         etichettaRiepilogoData.setText("Data: " + data.format(FORMATO_DATA));
 
-        // Prezzo del solo ombrellone: totale senza servizi.
         double prezzoBase = GestoreStabilimento.getPrezzoTotale(idOmbrellone, null, null, data);
         etichettaPrezzoBase.setText("Prezzo ombrellone: " + formattaPrezzo(prezzoBase));
 
@@ -109,18 +96,15 @@ public class FormEffettuaPrenotazione {
     }
 
     /*
-     * Costruisce (o ricostruisce) la lista dei servizi aggiuntivi prenotabili per
-     * la data: una riga per servizio (descrizione, prezzo unitario, quantità
-     * massima) con un selettore di quantità da 0 al residuo. Sono mostrati solo i
-     * servizi disponibili (residuo > 0) e con una tariffa definita: il Controller
-     * applica già questo filtro.
+     * Costruisce la lista dei servizi aggiuntivi prenotabili per la data:
+     * Una riga per servizio (descrizione, prezzo unitario, quantità massima)
+     * con un selettore di quantità da 0 al residuo.
+     * Sono mostrati solo i servizi disponibili (residuo > 0) e con una tariffa definita.
      */
     private void costruisciServizi() {
         pannelloServizi.removeAll();
         spinnerServizi.clear();
 
-        // Una riga per servizio: chiavi "descrizione", "id", "residuo" e
-        // "prezzo" unitario (i valori numerici viaggiano come stringhe).
         List<Map<String, String>> servizi = GestoreStabilimento.getServiziPrenotabili(data);
         idServiziVisualizzati = new long[servizi.size()];
 
@@ -140,7 +124,6 @@ public class FormEffettuaPrenotazione {
                         + " — " + formattaPrezzo(prezzo)
                         + "  (max: " + residuo + ")"));
 
-                // Quantità ordinabile: da 0 (non scelto) fino al residuo disponibile.
                 JSpinner selettore = new JSpinner(new SpinnerNumberModel(0, 0, residuo, 1));
                 selettore.addChangeListener(e -> aggiornaTotale());
 
@@ -165,8 +148,8 @@ public class FormEffettuaPrenotazione {
     }
 
     /*
-     * Conferma la prenotazione: la invia al Controller e gestisce l'esito,
-     * incluse le estensioni (ombrellone occupato nel frattempo, servizio esaurito).
+     * Conferma la prenotazione, la invia al Controller e gestisce l'esito,
+     * eventualmente innescando la notifica.
      */
     private void conferma() {
         int[] quantita = quantitaCorrenti();
@@ -175,9 +158,6 @@ public class FormEffettuaPrenotazione {
 
         switch (esito) {
             case GestoreStabilimento.PRENOTAZIONE_OK: {
-                // Ricevuta la conferma, il Boundary innesca la notifica al sistema
-                // esterno: chiede al Controller il testo del messaggio e lo invia
-                // al destinatario (l'email del cliente autenticato) tramite l'Adapter.
                 String corpoNotifica = GestoreStabilimento.getMessaggioNotificaPrenotazione(
                         emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
                 if (corpoNotifica != null) {
@@ -224,8 +204,6 @@ public class FormEffettuaPrenotazione {
 
     /*
      * Quantità attualmente impostate nei selettori, allineate a
-     * idServiziVisualizzati (0 = servizio non scelto). Le quantità nulle vengono
-     * ignorate dal Controller.
      */
     private int[] quantitaCorrenti() {
         int[] quantita = new int[spinnerServizi.size()];

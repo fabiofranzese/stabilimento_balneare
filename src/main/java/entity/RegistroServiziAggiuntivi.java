@@ -6,14 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * RegistroServiziAggiuntivi è il servizio di dominio per i servizi aggiuntivi
- * (livello Entity, BCED).
- *
- * Ruoli GRASP:
- * - Creator: crea le istanze di ServizioAggiuntivo;
- * - Information Expert: conosce l'insieme dei servizi (getServizi).
- *
- * Usa GestorePersistenza (livello Database), come gli altri Registro.
+ * RegistroServiziAggiuntivi è il servizio di dominio per i servizi aggiuntivi.
  */
 public class RegistroServiziAggiuntivi {
 
@@ -24,7 +17,7 @@ public class RegistroServiziAggiuntivi {
     }
 
     /*
-     * «Creator»: crea e salva un nuovo servizio aggiuntivo.
+     * Crea e salva un nuovo servizio aggiuntivo.
      */
     public ServizioAggiuntivo creaServizio(String descrizione, int capacita) {
         ServizioAggiuntivo servizio = new ServizioAggiuntivo(descrizione, capacita);
@@ -37,26 +30,21 @@ public class RegistroServiziAggiuntivi {
     }
 
     /*
-     * Information Expert: cerca un servizio aggiuntivo per id (null se inesistente).
-     * Esposto perché il Controller risolva le entità tramite il Registro (livello
-     * Entity), senza accedere direttamente al livello Database.
+     * Cerca un servizio aggiuntivo per id, ritornando null se inesistente.
      */
     public ServizioAggiuntivo trovaServizio(long id) {
         return gestorePersistenza.trovaPerId(ServizioAggiuntivo.class, id);
     }
 
     /*
-     * Information Expert: restituisce tutti i servizi aggiuntivi.
+     * Restituisce tutti i servizi aggiuntivi.
      */
     public List<ServizioAggiuntivo> getServizi() {
         return gestorePersistenza.cercaPerCampi(ServizioAggiuntivo.class, Map.of());
     }
 
     /*
-     * Caso d'uso Configurazione stabilimento (passo "aggiunge o modifica i
-     * servizi"): sostituisce l'intero elenco dei servizi con quello indicato
-     * (strategia "replace", coerente con la disposizione). I due array sono
-     * paralleli: descrizioni[i] e capacita[i] descrivono il servizio i-esimo.
+     * Sostituisce l'intero elenco dei servizi con quello indicato nella configurazione dello stabilimento.
      */
     public void sostituisciServizi(String[] descrizioni, int[] capacita) {
         for (ServizioAggiuntivo servizio : getServizi()) {

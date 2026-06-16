@@ -7,11 +7,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 /*
- * FormAccesso è il Boundary (BCED) del caso d'uso Accesso al sistema.
- *
- * L'interfaccia è realizzata con l'IntelliJ GUI Designer (FormAccesso.form):
- * i campi sotto sono bindati al form e istanziati da IntelliJ in compilazione.
- *
+ * FormAccesso è il Boundary del caso d'uso Accesso al sistema.
  * Raccoglie email e password e li invia al Controller GestoreUtenti, mostrando
  * l'esito del login e aprendo l'area riservata corrispondente al ruolo
  * (FinestraCliente o FinestraGestore).
@@ -23,11 +19,7 @@ public class FormAccesso {
     private JPasswordField campoPassword;
     private JButton bottoneAccedi;
 
-    // Finestra da cui si è aperto l'accesso (la schermata principale), nascosta
-    // mentre questo form è aperto: viene rimostrata se il form viene chiuso.
     private final JFrame finestraChiamante;
-    // Email da precompilare nel campo (es. quando si arriva dalla registrazione
-    // con un'email già registrata); null se non c'è nulla da precompilare.
     private final String emailPrecompilata;
     private JFrame frame;
 
@@ -45,12 +37,9 @@ public class FormAccesso {
         frame = new JFrame("Accesso");
         frame.setContentPane(pannelloAccesso);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Precompila l'email se fornita dal chiamante.
         if (emailPrecompilata != null) {
             campoEmail.setText(emailPrecompilata);
         }
-        // Se l'utente chiude il form senza accedere, si torna alla schermata
-        // principale (la finestra chiamante).
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -72,8 +61,7 @@ public class FormAccesso {
 
         switch (esito) {
             case GestoreUtenti.LOGIN_CLIENTE:
-                // Accesso riuscito: la schermata principale non serve più.
-                // Si propaga l'email del cliente (identità BCED-safe) all'area Cliente.
+                // Si propaga l'email del cliente all'area Cliente.
                 finestraChiamante.dispose();
                 frame.dispose();
                 new FinestraCliente(email).apri();

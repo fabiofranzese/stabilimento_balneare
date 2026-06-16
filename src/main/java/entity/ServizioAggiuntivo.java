@@ -6,13 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /*
- * ServizioAggiuntivo è un servizio opzionale dello stabilimento (livello Entity,
- * BCED): es. lettini extra, cabine, parcheggio.
+ * ServizioAggiuntivo è un servizio opzionale dello stabilimento (es. lettini extra, cabine, parcheggio).
  *
- * "capacita" è il tetto massimo di disponibilità deciso dal gestore (dato statico
- * di configurazione, richiesto dalla specifica come "disponibilità limitata").
- * La disponibilità residua per una certa data è invece un dato derivato dalle
- * prenotazioni attive, e non è memorizzata qui.
+ * "capacita" è il tetto massimo di disponibilità deciso dal gestore.
+ * La disponibilità residua per una certa data è un dato derivato dalle prenotazioni attive.
  */
 @Entity
 public class ServizioAggiuntivo {
@@ -26,9 +23,7 @@ public class ServizioAggiuntivo {
     private int capacita;
 
     /*
-     * Le tariffe del servizio (una per stagione). Il servizio "possiede" le sue
-     * tariffe: eliminando il servizio (es. riconfigurando lo stabilimento) le
-     * relative tariffe vengono rimosse a cascata, senza restare orfane.
+     * Tariffe del servizio, una per stagione.
      */
     @OneToMany(mappedBy = "servizio", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TariffaServizioAggiuntivo> tariffe = new ArrayList<>();

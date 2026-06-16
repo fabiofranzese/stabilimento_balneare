@@ -3,12 +3,9 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * Utente è la superclasse astratta del dominio (livello Entity, BCED): Cliente
- * e Gestore la estendono.
- *
- * Ereditarietà mappata con strategia SINGLE_TABLE: tutte le sottoclassi nella
- * stessa tabella, con colonna discriminante "ruolo" ("CLIENTE"/"GESTORE"). Il
- * ruolo associato a ciascun account è così gestito direttamente da JPA.
+ * Utente è una classe astratta del dominio che ha Cliente e Gestore la estendono.
+ * L'ereditarietà è mappata con strategia SINGLE_TABLE: tutte le sottoclassi nella
+ * stessa tabella, con colonna discriminante "ruolo" (CLIENTE/GESTORE).
  */
 @Entity
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -21,19 +18,9 @@ public abstract class Utente {
 
     private String nome;
     private String cognome;
-
-    /*
-     * L'email identifica l'account ed è usata in fase di accesso.
-     * L'unicità è garantita a livello applicativo dal RegistroUtenti.
-     */
     private String email;
-
     private String telefono;
 
-    /*
-     * La password viene memorizzata cifrata (hash SHA-256), mai in chiaro:
-     * la cifratura è a carico del RegistroUtenti.
-     */
     private String password;
 
     public Utente() {

@@ -3,14 +3,11 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * Tariffa è la superclasse astratta delle tariffe (livello Entity, BCED):
- * rappresenta un costo valido per una certa stagione. La estendono
- * TariffaTipoFila (prezzo di un tipo di ombrellone) e TariffaServizioAggiuntivo
- * (prezzo di un servizio).
- *
- * Mappatura dell'ereditarietà: strategia SINGLE_TABLE (come per Utente). Tutte le
- * sottoclassi stanno nella stessa tabella; la colonna discriminante "tipo_tariffa"
- * vale "TIPO_FILA" o "SERVIZIO".
+ * Tariffa è la superclasse astratta delle tariffe e rappresenta un costo valido per una certa stagione.
+ * La estendono TariffaTipoFila (prezzo di un tipo di fila)
+ * e TariffaServizioAggiuntivo (prezzo di un servizio).
+ * La mappatura dell'ereditarietà è con strategia SINGLE_TABLE (come per Utente):
+ * Tutte le sottoclassi stanno nella stessa tabella, con colonna discriminante "tipo_tariffa" (TIPO_FILA/SERVIZIO)
  */
 @Entity
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -21,10 +18,6 @@ public abstract class Tariffa {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
-     * Costo giornaliero. Deve essere strettamente positivo: il controllo è a
-     * carico del Controller (GestoreStabilimento) prima della creazione.
-     */
     private double costo;
 
     @Enumerated(EnumType.STRING)

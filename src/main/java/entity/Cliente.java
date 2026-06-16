@@ -10,10 +10,7 @@ import java.util.List;
 /*
  * Cliente è un Utente con ruolo "CLIENTE".
  *
- * Associazione "ha effettuato" (1 — 0..*) con Prenotazione: il Cliente è il lato
- * inverso (di sola lettura); la persistenza avviene dal lato proprietario
- * (Prenotazione.cliente). La collezione è usata pienamente nel caso d'uso
- * Gestione prenotazioni personali.
+ * Partecipa all'associazione "ha effettuato" (1 — 0..*) con Prenotazione.
  */
 @Entity
 @DiscriminatorValue("CLIENTE")

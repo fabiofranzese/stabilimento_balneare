@@ -10,21 +10,12 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * FormConfigurazioneStabilimento è il Boundary (BCED) del caso d'uso
- * Configurazione stabilimento.
- *
- * Interfaccia realizzata con l'IntelliJ GUI Designer
- * (FormConfigurazioneStabilimento.form): i campi sotto sono bindati al form e
- * istanziati da IntelliJ in compilazione (metodo generato $$$setupUI$$$), prima
- * del corpo del costruttore.
- *
+ * FormConfigurazioneStabilimento è il Boundary del caso d'uso Configurazione stabilimento.
  * Il gestore costruisce la disposizione una fila per volta (tipo + numero di
- * ombrelloni) e l'elenco dei servizi aggiuntivi (descrizione + capacità); alla
- * conferma l'intera configurazione viene inviata al Controller. Questa classe
- * contiene solo l'interazione con l'utente: delega ogni logica a
- * GestoreStabilimento e non accede né al dominio né alla persistenza (scambia
- * solo tipi primitivi/array e righe di stringhe a chiavi).
+ * ombrelloni) e l'elenco dei servizi aggiuntivi (descrizione + capacità).
+ * Alla conferma, la configurazione viene inviata al Controller.
  */
+
 public class FormConfigurazioneStabilimento {
 
     private JPanel pannelloConfigurazione;
@@ -44,14 +35,11 @@ public class FormConfigurazioneStabilimento {
 
     private JButton bottoneSalva;
 
-    // Finestra da cui si è aperta la configurazione (l'area Gestore), nascosta
-    // mentre questo form è aperto: viene rimostrata al salvataggio o alla chiusura.
     private final JFrame finestraChiamante;
     private JFrame frame;
 
     // Stato in memoria della configurazione in corso di modifica.
-    // File: numero di ombrelloni per fila, in ordine. La posizione
-    // (prima/intermedia/ultima) non è scelta qui: la deriva il sistema dall'ordine.
+    // File: numero di ombrelloni per fila, in ordine.
     private final List<Integer> ombrelloniPerFila = new ArrayList<>();
     // Servizi: array paralleli descrizione / capacità.
     private final List<String> descrizioniServizi = new ArrayList<>();
@@ -62,7 +50,6 @@ public class FormConfigurazioneStabilimento {
 
     public FormConfigurazioneStabilimento(JFrame finestraChiamante) {
         this.finestraChiamante = finestraChiamante;
-        // Collega i modelli alle liste.
         listaFile.setModel(modelloFile);
         listaServizi.setModel(modelloServizi);
 
@@ -77,14 +64,12 @@ public class FormConfigurazioneStabilimento {
         frame = new JFrame("Configurazione stabilimento");
         frame.setContentPane(pannelloConfigurazione);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Se l'utente chiude il form senza salvare, si torna all'area Gestore.
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 finestraChiamante.setVisible(true);
             }
         });
-        // Precarica la configurazione già salvata, così il gestore la modifica.
         precaricaConfigurazione();
         frame.pack();
         frame.setLocationRelativeTo(null);
@@ -93,7 +78,7 @@ public class FormConfigurazioneStabilimento {
         return frame;
     }
 
-    // --- Disposizione file ---
+    // Disposizione file
 
     private void aggiungiFila() {
         int numero = leggiIntero(campoNumeroOmbrelloni);
@@ -120,9 +105,7 @@ public class FormConfigurazioneStabilimento {
     }
 
     /*
-     * Ridisegna l'elenco delle file. La posizione (prima/intermedia/ultima) è
-     * derivata dal sistema in base all'ordine: si rilegge dal Controller a ogni
-     * aggiunta/rimozione, così le etichette restano coerenti.
+     * Ridisegna l'elenco delle file.
      */
     private void aggiornaListaFile() {
         String[] posizioni = GestoreStabilimento.getEtichettePosizioniFile(ombrelloniPerFila.size());
@@ -133,7 +116,7 @@ public class FormConfigurazioneStabilimento {
         }
     }
 
-    // --- Servizi aggiuntivi ---
+    // Servizi aggiuntivi
 
     private void aggiungiServizio() {
         String descrizione = campoDescrizioneServizio.getText().trim();
@@ -178,7 +161,7 @@ public class FormConfigurazioneStabilimento {
         }
     }
 
-    // --- Salvataggio ---
+    // Salvataggio
 
     private void salva() {
         int esito = GestoreStabilimento.salvaConfigurazione(
@@ -219,7 +202,7 @@ public class FormConfigurazioneStabilimento {
         }
     }
 
-    // --- Precaricamento della configurazione esistente ---
+    // Precaricamento della configurazione esistente
 
     private void precaricaConfigurazione() {
         // Una riga per fila ("numeroOmbrelloni") e una per servizio
@@ -236,12 +219,6 @@ public class FormConfigurazioneStabilimento {
         aggiornaListaServizi();
     }
 
-    // --- Utilità ---
-
-    /*
-     * Legge un intero dal campo; restituisce -1 se il testo non è un numero
-     * valido, così i controlli sui minimi (>=1, >=0) intercettano l'errore.
-     */
     private int leggiIntero(JTextField campo) {
         try {
             return Integer.parseInt(campo.getText().trim());

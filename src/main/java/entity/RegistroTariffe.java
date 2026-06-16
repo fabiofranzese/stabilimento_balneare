@@ -6,18 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * RegistroTariffe è il servizio di dominio per le tariffe (livello Entity, BCED).
- *
- * Ruoli GRASP:
- * - Creator: crea le istanze di Tariffa (TariffaTipoFila / TariffaServizioAggiuntivo);
- * - Information Expert: conosce l'insieme delle tariffe, quindi gli competono le
- *   ricerche complessive (getTariffeTipoFila / getTariffeServizio).
- *
- * Usa GestorePersistenza (livello Database), come gli altri Registro.
- *
- * Strategia "upsert": definire una tariffa per un certo elemento e una certa
- * stagione aggiorna il costo se la tariffa esiste già, altrimenti la crea. In
- * questo modo esiste al più una tariffa per ogni coppia (elemento, stagione).
+ * RegistroTariffe è il servizio di dominio per le tariffe.
  */
 public class RegistroTariffe {
 
@@ -27,8 +16,11 @@ public class RegistroTariffe {
         gestorePersistenza = new GestorePersistenza();
     }
 
+
     /*
-     * Definisce (crea o aggiorna) la tariffa di un tipo di fila per una stagione.
+     * DEFINIZIONE TARIFFE
+     *
+     * Definisce la tariffa di un tipo di fila per una stagione.
      */
     public void definisciTariffaTipoFila(TipoFila tipoFila, Stagione stagione, double costo) {
         TariffaTipoFila esistente = gestorePersistenza.cercaPrimoPerCampi(
@@ -44,8 +36,7 @@ public class RegistroTariffe {
     }
 
     /*
-     * Definisce (crea o aggiorna) la tariffa di un servizio aggiuntivo per una
-     * stagione.
+     * Definisce la tariffa di un servizio aggiuntivo per una stagione.
      */
     public void definisciTariffaServizio(ServizioAggiuntivo servizio, Stagione stagione, double costo) {
         TariffaServizioAggiuntivo esistente = gestorePersistenza.cercaPrimoPerCampi(
@@ -61,8 +52,7 @@ public class RegistroTariffe {
     }
 
     /*
-     * Elimina la tariffa indicata (per id). Usata dalla riconciliazione del
-     * salvataggio per cancellare le tariffe rimosse dal gestore.
+     * Elimina la tariffa indicata (per id).
      */
     public void elimina(Tariffa tariffa) {
         if (tariffa != null && tariffa.getId() != null) {
@@ -71,16 +61,10 @@ public class RegistroTariffe {
         }
     }
 
-    /*
-     * Information Expert: tutte le tariffe dei tipi di fila.
-     */
     public List<TariffaTipoFila> getTariffeTipoFila() {
         return gestorePersistenza.cercaPerCampi(TariffaTipoFila.class, Map.of());
     }
 
-    /*
-     * Information Expert: tutte le tariffe dei servizi aggiuntivi.
-     */
     public List<TariffaServizioAggiuntivo> getTariffeServizio() {
         return gestorePersistenza.cercaPerCampi(TariffaServizioAggiuntivo.class, Map.of());
     }

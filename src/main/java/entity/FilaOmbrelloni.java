@@ -6,16 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /*
- * FilaOmbrelloni è una fila di ombrelloni dello stabilimento (livello Entity,
- * BCED). Aggrega i propri Ombrellone in composizione (◆—): gli ombrelloni
- * vivono e sono numerati all'interno della fila.
- *
- * Ruolo GRASP: «Ombrellone Creator». Poiché contiene gli ombrelloni, è la fila
- * a istanziarli (creaOmbrellone): chi aggrega crea.
- *
- * La collezione è EAGER perché GestorePersistenza chiude l'EntityManager al
- * termine di ogni operazione: gli ombrelloni vanno caricati subito, per poter
- * essere letti dai livelli superiori senza errori di lazy loading.
+ * FilaOmbrelloni è una fila di ombrelloni dello stabilimento.
+ * Questa aggrega i propri Ombrellone in composizione
  */
 @Entity
 public class FilaOmbrelloni {
@@ -24,14 +16,10 @@ public class FilaOmbrelloni {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
-     * Numero progressivo della fila nello stabilimento (1..N).
-     */
     private int numero;
 
     /*
-     * Posizione della fila (prima / intermedia / ultima). Tutti gli ombrelloni
-     * della fila ne ereditano la posizione.
+     * Posizione della fila (prima / intermedia / ultima).
      */
     @Enumerated(EnumType.STRING)
     private TipoFila tipoFila;
@@ -48,8 +36,7 @@ public class FilaOmbrelloni {
     }
 
     /*
-     * «Creator»: crea un Ombrellone con il numero indicato, lo collega a questa
-     * fila e lo aggiunge alla collezione. Restituisce l'ombrellone creato.
+     * Crea un Ombrellone con il numero indicato, lo collega a questa fila e lo aggiunge alla collezione.
      */
     public Ombrellone creaOmbrellone(int numero) {
         Ombrellone ombrellone = new Ombrellone(numero, this);

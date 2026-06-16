@@ -8,13 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /*
- * Prenotazione di un ombrellone per un giorno (data), effettuata da un Cliente,
- * con zero o più servizi aggiuntivi (livello Entity, BCED). Lo stato è modellato
- * col pattern State (StatoPrenotazione).
- *
- * La disponibilità di un ombrellone non è un suo attributo: è un dato derivato,
- * l'ombrellone è occupato in una data se esiste una prenotazione attiva (stato
- * Prenotata) che lo riguarda in quella data.
+ * Prenotazione di un ombrellone per una data, effettuata da un Cliente, con zero o più servizi aggiuntivi.
+ * Lo stato è modellato col pattern State (StatoPrenotazione).
  */
 @Entity
 public class Prenotazione {
@@ -23,20 +18,11 @@ public class Prenotazione {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
-     * Giorno prenotato.
-     */
     private LocalDate data;
-
-    /*
-     * Istante di creazione della prenotazione (dato di registrazione per lo storico).
-     */
     private LocalDateTime dataCreazione;
 
     /*
-     * Prezzo totale "congelato" alla creazione, alle tariffe vigenti in quel
-     * momento: lo storico mostra il prezzo effettivamente applicato al cliente,
-     * indipendente da successive modifiche delle tariffe.
+     * Prezzo totale "congelato" alla creazione in base alle tariffe di quel momento.
      */
     private double prezzoTotale;
 
@@ -45,11 +31,7 @@ public class Prenotazione {
     private Ombrellone ombrellone;
 
     /*
-     * Stato della prenotazione (pattern State). Lo stato è un oggetto puramente
-     * comportamentale, non una Entity: se ne persiste solo il tipo nella colonna
-     * "tipo_stato", mentre l'istanza concreta Prenotata/Annullata è @Transient e
-     * viene ricostruita in lettura (@PostLoad). setStato tiene allineate le due
-     * rappresentazioni.
+     * Stato della prenotazione (pattern State)
      */
     @Column(name = "tipo_stato")
     private String tipoStato;
@@ -58,8 +40,7 @@ public class Prenotazione {
     private StatoPrenotazione stato;
 
     /*
-     * Il cliente che ha effettuato la prenotazione (lato proprietario
-     * dell'associazione "ha effettuato").
+     * Il cliente che ha effettuato la prenotazione
      */
     @ManyToOne
     @JoinColumn(name = "cliente_id")
@@ -95,11 +76,6 @@ public class Prenotazione {
         this.prezzoTotale = prezzoTotale;
     }
 
-    /*
-     * Information Expert del limite di annullamento: la prenotazione è annullabile
-     * se lo stato lo consente (solo una Prenotata) e la richiesta avviene entro il
-     * limite temporale, cioè prima del giorno prenotato (oggi < data).
-     */
     public boolean isAnnullabile(LocalDate oggi) {
         return stato != null && stato.isAnnullabile()
                 && oggi != null && data != null && oggi.isBefore(data);
@@ -108,10 +84,6 @@ public class Prenotazione {
     /*
      * Evento "annulla" del pattern State: il Context delega allo stato corrente,
      * che decide la transizione (Prenotata -> Annullata) o la ignora (Annullata).
-     *
-     * NOTE: la precondizione temporale (oggi < data) è verificata a monte dal
-     * Controller tramite isAnnullabile(oggi); qui lo stato gestisce la sola
-     * validità di stato.
      */
     public void annulla() {
         if (stato != null) {
@@ -148,9 +120,7 @@ public class Prenotazione {
     }
 
     /*
-     * Imposta lo stato e ne allinea la rappresentazione persistente "tipo_stato":
-     * è l'unico punto che traduce l'istanza nel suo tipo, così le due viste dello
-     * stesso stato non possono divergere.
+     * Imposta lo stato e ne allinea la rappresentazione persistente "tipo_stato".
      */
     public void setStato(StatoPrenotazione stato) {
         this.stato = stato;
@@ -160,8 +130,7 @@ public class Prenotazione {
 
     /*
      * Dopo il caricamento dal DB ricostruisce l'istanza concreta dello stato dal
-     * "tipo_stato" salvato (lo stato è @Transient): è il verso di lettura del
-     * pattern State persistito come singola colonna.
+     * "tipo_stato" salvato (lo stato è @Transient).
      */
     @PostLoad
     private void ricostruisciStato() {

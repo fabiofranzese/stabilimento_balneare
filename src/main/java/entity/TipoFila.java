@@ -2,14 +2,7 @@ package entity;
 
 /*
  * TipoFila rappresenta la posizione di una fila di ombrelloni all'interno dello
- * stabilimento (livello Entity, BCED).
- *
- * Il domain model la disegna come gerarchia astratta (TipoFila → PrimaFila /
- * FilaIntermedia / UltimaFila); essendo un insieme chiuso di tre valori senza
- * comportamento, è realizzata come enum, più semplice da mappare con JPA
- * (@Enumerated su FilaOmbrelloni). L'etichetta in italiano è l'unica sorgente
- * dei testi mostrati nella GUI. La derivazione della posizione dall'ordine
- * della fila è in GestoreStabilimento (tipoFilaPerPosizione).
+ * stabilimento.
  */
 public enum TipoFila {
 

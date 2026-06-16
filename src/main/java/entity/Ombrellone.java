@@ -3,13 +3,9 @@ package entity;
 import jakarta.persistence.*;
 
 /*
- * Ombrellone è la singola postazione (livello Entity, BCED). È la "foglia" della
- * struttura dello stabilimento: appartiene a una FilaOmbrelloni (composizione) ed
+ * Ombrellone è la singola postazione, appartiene a una FilaOmbrelloni ed
  * è numerato progressivamente all'interno della propria fila.
- *
- * La disponibilità per una certa data NON è uno stato memorizzato qui: è un dato
- * derivato dalle prenotazioni attive. Per questo l'ombrellone non ha un attributo
- * "stato".
+ * La disponibilità per una certa data è un dato derivato dalle prenotazioni attive.
  */
 @Entity
 public class Ombrellone {
@@ -18,15 +14,8 @@ public class Ombrellone {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
-     * Numero progressivo dell'ombrellone all'interno della sua fila (1..N).
-     */
     private int numero;
 
-    /*
-     * La fila a cui appartiene l'ombrellone. Lato "molti" della composizione
-     * FilaOmbrelloni ◆— Ombrellone.
-     */
     @ManyToOne
     @JoinColumn(name = "fila_id")
     private FilaOmbrelloni fila;
@@ -65,7 +54,6 @@ public class Ombrellone {
 
     @Override
     public String toString() {
-        // Non si stampa la fila per evitare ricorsione nel toString.
         return "Ombrellone{id=" + id + ", numero=" + numero + '}';
     }
 }
