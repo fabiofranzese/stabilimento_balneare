@@ -132,17 +132,12 @@ public class GestorePrenotazioni {
 
     /* GESTIONE PRENOTAZIONI PERSONALI
      *
-     * Operazioni del caso d'uso Gestione prenotazioni personali (attore
-     * ClienteAutenticato): consultazione dello storico e annullamento entro il
-     * limite temporale. Il Boundary identifica il cliente con l'email e la
-    /* prenotazione con il suo id.
+     * Operazioni del caso d'uso Gestione prenotazioni personali: consultazione dello storico
+     * e annullamento entro il limite temporale.
+     */
 
     /*
      * Annullamento prenotazione.
-     * Ottiene cliente per email e prenotazione per id e verifica che la
-     * prenotazione appartenga a quel cliente e che sia annullabile entro il
-     * limite temporale. Delega al RegistroPrenotazioni la transizione ad
-     * Annullata e il salvataggio.
      */
     public static int annullaPrenotazione(String emailCliente, long idPrenotazione) {
         if (emailCliente == null) {
@@ -179,8 +174,7 @@ public class GestorePrenotazioni {
     }
 
     /*
-     * Storico del cliente: una riga per prenotazione, in
-     * ordine deterministico (per data, poi per id), con chiavi
+     * Storico del cliente: una riga per prenotazione con chiavi:
      *   "data"`: data prenotata;
      *   "postazione": postazione scelta ("Ombrellone n. X (Fila Y)");
      *   "servizi": servizi aggiuntivi con quantità, o "nessuno";
@@ -221,8 +215,7 @@ public class GestorePrenotazioni {
     }
 
     /*
-     * Postazione scelta di una prenotazione ("Ombrellone n. X (Fila Y)"), oppure
-     * stringa vuota se non determinabile.
+     * Postazione scelta di una prenotazione ("Ombrellone n. X (Fila Y)").
      */
     private static String descriviPostazione(Prenotazione prenotazione) {
         Ombrellone ombrellone = prenotazione.getOmbrellone();
@@ -240,8 +233,7 @@ public class GestorePrenotazioni {
     }
 
     /*
-     * Servizi aggiuntivi di una prenotazione, con quantità ("2 x Lettino,
-     * 1 x Cabina"), o stringa vuota se non ci sono servizi.
+     * Servizi aggiuntivi di una prenotazione, con quantità ("2 x Lettino, 1 x Cabina").
      */
     private static String descriviServizi(Prenotazione prenotazione) {
         StringBuilder servizi = new StringBuilder();

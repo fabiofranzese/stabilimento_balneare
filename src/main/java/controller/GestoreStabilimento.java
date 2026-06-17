@@ -454,7 +454,7 @@ public class GestoreStabilimento {
      * VISUALIZZAZIONE MAPPA
      * Il Boundary riceve solo etichette e righe di stringhe a chiavi, allineate
      * per indice di fila e poi di ombrellone. Le file sono ordinate per
-     * posizione (prima -> intermedia -> ultima) e poi per numero).
+     * posizione (prima -> intermedia -> ultima) e poi per numero.
      * La mappa che va dalla riva verso l'interno.
      */
 
@@ -530,7 +530,7 @@ public class GestoreStabilimento {
     }
 
     /*
-     * File ordinate per la mappa: prima per posizione (prima -> intermedia -> ultima) e poi per numero
+     * File e ombrelloni ordinati per la mappa: prima per posizione (prima -> intermedia -> ultima) e poi per numero
      */
     private static List<FilaOmbrelloni> fileOrdinatePerMappa() {
         List<FilaOmbrelloni> file = new RegistroOmbrelloni().getFile();
@@ -574,7 +574,7 @@ public class GestoreStabilimento {
 
     /*
      * Servizi che il cliente può prenotare per la data scelta: quelli con
-     * disponibilità residua positiva e con una tariffa definita per la stagione di quella data
+     * disponibilità residua positiva e con una tariffa definita per la stagione di quella data.
      */
     private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -634,17 +634,13 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Ombrellone per id. Esposto a GestorePrenotazioni, che compone la
-     * prenotazione senza accedere direttamente al RegistroOmbrelloni.
+     * Ombrellone e Servizio Aggiuntivo per id. Esposti a GestorePrenotazioni, che compone la
+     * prenotazione senza accedere direttamente al RegistroOmbrelloni e al RegistroServiziAggiuntivi.
      */
     public static Ombrellone trovaOmbrellone(long id) {
         return new RegistroOmbrelloni().trovaOmbrellone(id);
     }
 
-    /*
-     * Servizio aggiuntivo per id. Esposto a GestorePrenotazioni per le stesse
-     * ragioni di trovaOmbrellone.
-     */
     public static ServizioAggiuntivo trovaServizio(long id) {
         return new RegistroServiziAggiuntivi().trovaServizio(id);
     }
