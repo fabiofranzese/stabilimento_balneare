@@ -29,8 +29,16 @@ public class FinestraGestore {
             new FormConfigurazioneStabilimento(frame).apri();
         });
 
-        // Apre il caso d'uso Definizione tariffe.
+        // Apre il caso d'uso Definizione tariffe, previa verifica della precondizione:
+        // lo stabilimento deve essere già configurato (almeno una fila di ombrelloni).
         bottoneDefinisciTariffe.addActionListener(e -> {
+            if (!GestoreStabilimento.isConfigurazioneEffettuata()) {
+                JOptionPane.showMessageDialog(frame,
+                        "Configura prima lo stabilimento: serve almeno una fila di ombrelloni\n"
+                                + "prima di poter definire le tariffe.",
+                        "Configurazione mancante", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             frame.setVisible(false);
             new FormDefinizioneTariffe(frame).apri();
         });
@@ -48,24 +56,11 @@ public class FinestraGestore {
             public void windowClosing(WindowEvent e) {
                 new FinestraPrincipale().apri();
             }
-
-            @Override
-            public void windowActivated(WindowEvent e) {
-                aggiornaDisponibilitaTariffe();
-            }
         });
-        aggiornaDisponibilitaTariffe();
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         return frame;
-    }
-
-    /*
-     * Implementazione precondizione Definizione Tariffe.
-     */
-    private void aggiornaDisponibilitaTariffe() {
-        bottoneDefinisciTariffe.setEnabled(GestoreStabilimento.isConfigurazioneEffettuata());
     }
 
     private void tornaAllaSchermataPrincipale() {

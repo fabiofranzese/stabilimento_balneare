@@ -123,8 +123,8 @@ public class FormGestionePrenotazioni {
         etichettaStato.setText("Stato: " + riga.get("stato"));
         etichettaPrezzo.setText(String.format("Totale: € %.2f", Double.parseDouble(riga.get("prezzo"))));
 
-        bottoneAnnulla.setEnabled(annullabile);
-
+        // Il bottone resta sempre abilitato: se la prenotazione non è annullabile,
+        // è annulla() a mostrare la dialog di errore al click.
         if (!annullabile && "Prenotata".equals(riga.get("stato"))) {
             etichettaAvviso.setText("Non più annullabile: è oltre il limite temporale.");
         } else {
@@ -214,7 +214,6 @@ public class FormGestionePrenotazioni {
         etichettaStato.setText("Stato: -");
         etichettaPrezzo.setText("Totale: -");
         etichettaAvviso.setText(" ");
-        bottoneAnnulla.setEnabled(false);
     }
 
     private void chiudi() {
