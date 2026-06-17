@@ -5,6 +5,7 @@ import entity.Ombrellone;
 import entity.Prenotazione;
 import entity.RegistroPrenotazioni;
 import entity.ServizioAggiuntivo;
+import entity.ServizioPrenotato;
 import entity.StatoPrenotazione;
 
 import java.time.LocalDate;
@@ -245,11 +246,11 @@ public class GestorePrenotazioni {
     private static String descriviServizi(Prenotazione prenotazione) {
         StringBuilder servizi = new StringBuilder();
 
-        for (Map.Entry<ServizioAggiuntivo, Integer> voce : prenotazione.getQuantitaServizi().entrySet()) {
+        for (ServizioPrenotato voce : prenotazione.getServiziPrenotati()) {
             if (servizi.length() > 0) {
                 servizi.append(", ");
             }
-            servizi.append(voce.getValue()).append(" x ").append(voce.getKey().getDescrizione());
+            servizi.append(voce.getQuantita()).append(" x ").append(voce.getServizio().getDescrizione());
         }
 
         return servizi.toString();
@@ -327,13 +328,12 @@ public class GestorePrenotazioni {
             corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA_NOTIFICA)).append('\n');
         }
 
-        Map<ServizioAggiuntivo, Integer> quantitaServizi = prenotazione.getQuantitaServizi();
-        if (quantitaServizi != null && !quantitaServizi.isEmpty()) {
+        List<ServizioPrenotato> serviziPrenotati = prenotazione.getServiziPrenotati();
+        if (serviziPrenotati != null && !serviziPrenotati.isEmpty()) {
             corpo.append("Servizi aggiuntivi:\n");
-            for (Map.Entry<ServizioAggiuntivo, Integer> voce : quantitaServizi.entrySet()) {
-                int q = voce.getValue() != null ? voce.getValue() : 0;
-                corpo.append("  - ").append(q).append(" x ")
-                        .append(voce.getKey().getDescrizione()).append('\n');
+            for (ServizioPrenotato voce : serviziPrenotati) {
+                corpo.append("  - ").append(voce.getQuantita()).append(" x ")
+                        .append(voce.getServizio().getDescrizione()).append('\n');
             }
         }
 

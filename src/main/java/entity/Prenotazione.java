@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -47,17 +48,11 @@ public class Prenotazione {
     private Cliente cliente;
 
     /*
-     * Servizi aggiuntivi inclusi, con la quantità prenotata per ciascuno
-     * (associazione "include" con attributo quantità): Map con chiave la Entity
-     * ServizioAggiuntivo, senza una classe associativa dedicata. EAGER perché
-     * GestorePersistenza chiude l'EntityManager al termine di ogni operazione.
+     * Servizi aggiuntivi inclusi con la quantità prenotata per ciascuno.
      */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "prenotazione_servizio",
-            joinColumns = @JoinColumn(name = "prenotazione_id"))
-    @MapKeyJoinColumn(name = "servizio_id")
-    @Column(name = "quantita")
-    private Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
+    @OneToMany(mappedBy = "prenotazione", cascade = CascadeType.ALL,
+            orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ServizioPrenotato> serviziPrenotati = new ArrayList<>();
 
     public Prenotazione() {
     }
@@ -70,10 +65,21 @@ public class Prenotazione {
         setStato(stato);
         this.cliente = cliente;
         if (quantitaServizi != null) {
-            this.quantitaServizi = quantitaServizi;
+            for (Map.Entry<ServizioAggiuntivo, Integer> voce : quantitaServizi.entrySet()) {
+                aggiungiServizio(voce.getKey(), voce.getValue() != null ? voce.getValue() : 0);
+            }
         }
         this.dataCreazione = dataCreazione;
         this.prezzoTotale = prezzoTotale;
+    }
+
+    /*
+     * Crea una riga ServizioPrenotato collegata a questa prenotazione e la aggiunge alla collezione.
+     */
+    public ServizioPrenotato aggiungiServizio(ServizioAggiuntivo servizio, int quantita) {
+        ServizioPrenotato riga = new ServizioPrenotato(this, servizio, quantita);
+        serviziPrenotati.add(riga);
+        return riga;
     }
 
     public boolean isAnnullabile(LocalDate oggi) {
@@ -157,12 +163,12 @@ public class Prenotazione {
         this.cliente = cliente;
     }
 
-    public Map<ServizioAggiuntivo, Integer> getQuantitaServizi() {
-        return quantitaServizi;
+    public List<ServizioPrenotato> getServiziPrenotati() {
+        return serviziPrenotati;
     }
 
-    public void setQuantitaServizi(Map<ServizioAggiuntivo, Integer> quantitaServizi) {
-        this.quantitaServizi = quantitaServizi;
+    public void setServiziPrenotati(List<ServizioPrenotato> serviziPrenotati) {
+        this.serviziPrenotati = serviziPrenotati;
     }
 
     public double getPrezzoTotale() {
@@ -179,7 +185,7 @@ public class Prenotazione {
                 + ", ombrellone=" + (ombrellone != null ? ombrellone.getNumero() : null)
                 + ", stato=" + (stato != null ? stato.nome() : null)
                 + ", cliente=" + (cliente != null ? cliente.getEmail() : null)
-                + ", servizi=" + quantitaServizi.size()
+                + ", servizi=" + serviziPrenotati.size()
                 + ", prezzoTotale=" + prezzoTotale + '}';
     }
 }

@@ -71,9 +71,9 @@ public class RegistroPrenotazioni {
         if (servizio.getId() == null) {
             return 0;
         }
-        for (Map.Entry<ServizioAggiuntivo, Integer> voce : prenotazione.getQuantitaServizi().entrySet()) {
-            if (servizio.getId().equals(voce.getKey().getId())) {
-                return voce.getValue() != null ? voce.getValue() : 0;
+        for (ServizioPrenotato riga : prenotazione.getServiziPrenotati()) {
+            if (riga.getServizio() != null && servizio.getId().equals(riga.getServizio().getId())) {
+                return riga.getQuantita();
             }
         }
         return 0;
@@ -113,11 +113,12 @@ public class RegistroPrenotazioni {
                 data, ombrellone, new Prenotata(),
                 cliente, new LinkedHashMap<>(serviziScelti), LocalDateTime.now(), prezzoTotale);
 
-        if (!gestorePersistenza.salva(prenotazione)) {
-            return null;
-        }
-
-        return prenotazione;
+        // La prenotazione referenzia entità staccate: cliente, ombrellone e i servizi
+        // (questi ultimi parte della chiave composta di ServizioPrenotato). Si salva
+        // con merge, così le associazioni già esistenti vengono ricollegate invece di
+        // essere ri-persistite: persist fallirebbe sull'entità staccata propagando
+        // lungo la chiave composta. merge restituisce l'istanza gestita.
+        return gestorePersistenza.aggiorna(prenotazione);
     }
 
     /*
