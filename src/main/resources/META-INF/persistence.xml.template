@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-    TEMPLATE — copiare in `persistence.xml` (stessa cartella) e inserire le proprie credenziali MySQL.
-    Il file `persistence.xml` è ignorato da git: non committare credenziali reali.
+    Copiare in `persistence.xml` e inserire le proprie credenziali MySQL.
 -->
 
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence"
@@ -25,10 +24,8 @@
         <class>entity.Tariffa</class>
         <class>entity.TariffaTipoFila</class>
         <class>entity.TariffaServizioAggiuntivo</class>
-        <class>entity.StatoPrenotazione</class>
-        <class>entity.Prenotata</class>
-        <class>entity.Annullata</class>
         <class>entity.Prenotazione</class>
+        <class>entity.ServizioPrenotato</class>
 
         <properties>
 
@@ -43,10 +40,10 @@
 
             <!-- Inserire la propria password locale. -->
             <property name="jakarta.persistence.jdbc.password"
-                      value="LA_TUA_PASSWORD"/>
+                      value="PASSWORD"/>
 
             <property name="hibernate.hbm2ddl.auto"
-                      value="create"/>
+                      value="update"/>
 
             <property name="hibernate.show_sql"
                       value="true"/>

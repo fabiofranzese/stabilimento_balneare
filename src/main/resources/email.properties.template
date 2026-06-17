@@ -1,6 +1,5 @@
 # Configurazione SMTP per l'invio reale delle notifiche email (Brevo).
-# Copiare questo file in `email.properties` (nella stessa cartella) e inserire le
-# credenziali reali. `email.properties` è in .gitignore e NON va committato.
+# Copiare questo file in `email.properties` (nella stessa cartella) e inserire le credenziali reali.
 
 mail.smtp.host=smtp-relay.brevo.com
 mail.smtp.port=587
@@ -11,5 +10,5 @@ mail.smtp.starttls.enable=true
 email.utente=IL_TUO_LOGIN_SMTP_BREVO
 email.password=LA_TUA_SMTP_KEY
 
-# Mittente del messaggio (From). Deve essere un sender VERIFICATO nell'account Brevo.
-email.mittente=IL_TUO_INDIRIZZO_MITTENTE_VERIFICATO
+# Mittente del messaggio (sender verificato nell'account Brevo).
+email.mittente=INDIRIZZO_MITTENTE_VERIFICATO
