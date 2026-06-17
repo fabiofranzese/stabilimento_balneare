@@ -1,7 +1,7 @@
 package boundary;
 
 import boundary.notifica.AdapterServizioNotifica;
-import controller.GestoreStabilimento;
+import controller.GestorePrenotazioni;
 import notifica.CanaleComunicazioneEsterno;
 
 import javax.swing.*;
@@ -83,7 +83,7 @@ public class FormGestionePrenotazioni {
      * Carica l'elenco delle prenotazioni del cliente dal Controller.
      */
     private void caricaPrenotazioni() {
-        prenotazioni = GestoreStabilimento.getPrenotazioniCliente(emailCliente);
+        prenotazioni = GestorePrenotazioni.getPrenotazioniCliente(emailCliente);
 
         // Ogni voce della lista riporta la data e lo stato della prenotazione
         // (es. "07/06/2026 - Prenotata").
@@ -164,13 +164,13 @@ public class FormGestionePrenotazioni {
         }
 
         long idAnnullata = Long.parseLong(prenotazioni.get(selezione).get("id"));
-        int esito = GestoreStabilimento.annullaPrenotazione(emailCliente, idAnnullata);
+        int esito = GestorePrenotazioni.annullaPrenotazione(emailCliente, idAnnullata);
 
         switch (esito) {
-            case GestoreStabilimento.ANNULLAMENTO_OK: {
+            case GestorePrenotazioni.ANNULLAMENTO_OK: {
                 // Ricevuta la conferma, il Boundary innesca chiedendo al Controller
                 // il testo del messaggio e inviandolo tramite l'Adapter.
-                String corpoNotifica = GestoreStabilimento.getMessaggioNotificaAnnullamento(emailCliente, idAnnullata);
+                String corpoNotifica = GestorePrenotazioni.getMessaggioNotificaAnnullamento(emailCliente, idAnnullata);
                 if (corpoNotifica != null) {
                     notificatore.prenotazioneAnnullata(emailCliente, corpoNotifica);
                 }
@@ -181,7 +181,7 @@ public class FormGestionePrenotazioni {
                 break;
             }
 
-            case GestoreStabilimento.LIMITE_TEMPORALE_SUPERATO:
+            case GestorePrenotazioni.LIMITE_TEMPORALE_SUPERATO:
                 // Estensione 3.2.a: oltre il limite temporale.
                 JOptionPane.showMessageDialog(frame,
                         "Operazione negata: la prenotazione è oltre il limite temporale consentito\n"
@@ -190,7 +190,7 @@ public class FormGestionePrenotazioni {
                 caricaPrenotazioni();
                 break;
 
-            case GestoreStabilimento.PRENOTAZIONE_NON_TROVATA:
+            case GestorePrenotazioni.PRENOTAZIONE_NON_TROVATA:
                 JOptionPane.showMessageDialog(frame,
                         "La prenotazione selezionata non è più disponibile.",
                         "Prenotazione non trovata", JOptionPane.WARNING_MESSAGE);

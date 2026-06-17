@@ -1,7 +1,7 @@
 package boundary;
 
 import boundary.notifica.AdapterServizioNotifica;
-import controller.GestoreStabilimento;
+import controller.GestorePrenotazioni;
 import notifica.CanaleComunicazioneEsterno;
 
 import javax.swing.*;
@@ -83,7 +83,7 @@ public class FormEffettuaPrenotazione {
         etichettaRiepilogoFila.setText(etichettaFila != null ? etichettaFila : "");
         etichettaRiepilogoData.setText("Data: " + data.format(FORMATO_DATA));
 
-        double prezzoBase = GestoreStabilimento.getPrezzoTotale(idOmbrellone, null, null, data);
+        double prezzoBase = GestorePrenotazioni.getPrezzoTotale(idOmbrellone, null, null, data);
         etichettaPrezzoBase.setText("Prezzo ombrellone: " + formattaPrezzo(prezzoBase));
 
         costruisciServizi();
@@ -105,7 +105,7 @@ public class FormEffettuaPrenotazione {
         pannelloServizi.removeAll();
         spinnerServizi.clear();
 
-        List<Map<String, String>> servizi = GestoreStabilimento.getServiziPrenotabili(data);
+        List<Map<String, String>> servizi = GestorePrenotazioni.getServiziPrenotabili(data);
         idServiziVisualizzati = new long[servizi.size()];
 
         if (servizi.isEmpty()) {
@@ -142,7 +142,7 @@ public class FormEffettuaPrenotazione {
      * Ricalcola il totale (ombrellone + servizi per le quantità scelte) per la data.
      */
     private void aggiornaTotale() {
-        double totale = GestoreStabilimento.getPrezzoTotale(
+        double totale = GestorePrenotazioni.getPrezzoTotale(
                 idOmbrellone, idServiziVisualizzati, quantitaCorrenti(), data);
         etichettaTotale.setText("Totale: " + String.format("€ %.2f", totale));
     }
@@ -153,12 +153,12 @@ public class FormEffettuaPrenotazione {
      */
     private void conferma() {
         int[] quantita = quantitaCorrenti();
-        int esito = GestoreStabilimento.effettuaPrenotazione(
+        int esito = GestorePrenotazioni.effettuaPrenotazione(
                 emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
 
         switch (esito) {
-            case GestoreStabilimento.PRENOTAZIONE_OK: {
-                String corpoNotifica = GestoreStabilimento.getMessaggioNotificaPrenotazione(
+            case GestorePrenotazioni.PRENOTAZIONE_OK: {
+                String corpoNotifica = GestorePrenotazioni.getMessaggioNotificaPrenotazione(
                         emailCliente, idOmbrellone, data, idServiziVisualizzati, quantita);
                 if (corpoNotifica != null) {
                     notificatore.prenotazioneEffettuata(emailCliente, corpoNotifica);
@@ -170,7 +170,7 @@ public class FormEffettuaPrenotazione {
                 break;
             }
 
-            case GestoreStabilimento.OMBRELLONE_NON_DISPONIBILE:
+            case GestorePrenotazioni.OMBRELLONE_NON_DISPONIBILE:
                 // Estensione 2.a: occupato da un altro utente durante la selezione.
                 JOptionPane.showMessageDialog(frame,
                         "L'ombrellone è stato appena occupato da un altro utente.\n"
@@ -179,7 +179,7 @@ public class FormEffettuaPrenotazione {
                 tornaAllaMappa();
                 break;
 
-            case GestoreStabilimento.SERVIZIO_ESAURITO:
+            case GestorePrenotazioni.SERVIZIO_ESAURITO:
                 // Estensione 3.1.a: un servizio selezionato si è esaurito.
                 JOptionPane.showMessageDialog(frame,
                         "La disponibilità di un servizio selezionato è terminata.\n"

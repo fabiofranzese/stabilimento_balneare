@@ -1,27 +1,21 @@
 package controller;
 
-import entity.Cliente;
 import entity.FilaOmbrelloni;
 import entity.Ombrellone;
-import entity.Prenotazione;
 import entity.RegistroOmbrelloni;
 import entity.RegistroPrenotazioni;
 import entity.RegistroServiziAggiuntivi;
 import entity.RegistroTariffe;
-import entity.RegistroUtenti;
 import entity.ServizioAggiuntivo;
 import entity.Stagione;
-import entity.StatoPrenotazione;
 import entity.TariffaServizioAggiuntivo;
 import entity.TariffaTipoFila;
 import entity.TipoFila;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,14 +23,9 @@ import java.util.Set;
 /*
  * GestoreStabilimento è il Controller e la Façade dei casi d'uso che
  * ruotano attorno allo stabilimento: Configurazione stabilimento, Definizione
- * tariffe, Visualizzazione mappa, Effettua prenotazione e Gestione prenotazioni
- * personali.
+ * tariffe e Visualizzazione mappa.
  */
 public class GestoreStabilimento {
-
-    // Formato di data per le righe dell'elenco prenotazioni (Gestione personali).
-    private static final DateTimeFormatter FORMATO_DATA_PRENOTAZIONE =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     // Esiti della configurazione.
     public static final int CONFIGURAZIONE_OK = 0;
@@ -48,19 +37,6 @@ public class GestoreStabilimento {
     public static final int TARIFFE_OK = 10;
     public static final int TARIFFA_NON_VALIDA = 11;
     public static final int ERRORE_TARIFFE = 12;
-
-    // Esiti della prenotazione.
-    public static final int PRENOTAZIONE_OK = 20;
-    public static final int OMBRELLONE_NON_DISPONIBILE = 21;
-    public static final int SERVIZIO_ESAURITO = 22;
-    public static final int DATI_PRENOTAZIONE_NON_VALIDI = 23;
-    public static final int ERRORE_PRENOTAZIONE = 24;
-
-    // Esiti dell'annullamento (caso d'uso Gestione prenotazioni personali).
-    public static final int ANNULLAMENTO_OK = 30;
-    public static final int LIMITE_TEMPORALE_SUPERATO = 31;
-    public static final int PRENOTAZIONE_NON_TROVATA = 32;
-    public static final int ERRORE_ANNULLAMENTO = 33;
 
     /*
      * CONFIGURAZIONE STABILIMENTO
@@ -145,7 +121,7 @@ public class GestoreStabilimento {
         String[] etichette = new String[Math.max(0, numeroFile)];
 
         for (int i = 0; i < etichette.length; i++) {
-            etichette[i] = tipoFilaPerPosizione(i, numeroFile).getEtichetta();
+            etichette[i] = etichettaEnum(tipoFilaPerPosizione(i, numeroFile));
         }
 
         return etichette;
@@ -167,7 +143,17 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Validazione della configurazione: 
+     * Etichetta leggibile ricavata dal nome della costante enum:
+     * sostituisce gli underscore con spazi e rende maiuscola l'iniziale
+     * (es. PRIMA_FILA -> "Prima fila", ALTA -> "Alta").
+     */
+    private static String etichettaEnum(Enum<?> valore) {
+        String testo = valore.name().toLowerCase().replace('_', ' ');
+        return Character.toUpperCase(testo.charAt(0)) + testo.substring(1);
+    }
+
+    /*
+     * Validazione della configurazione:
      * almeno una fila, ciascuna con almeno un ombrellone, array dei
      * servizi coerenti in lunghezza; descrizioni non vuote; 
      * capacità non negative.
@@ -322,7 +308,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Etichette delle stagioni, nell'ordine dell'enum Stagione.
+     * Etichette delle stagioni, nell'ordine dell'enum Stagione: l'etichetta è
+     * derivata dal nome della costante con il suffisso " stagione".
      * Questi popolano la combo del form.
      */
     public static String[] getStagioni() {
@@ -330,7 +317,7 @@ public class GestoreStabilimento {
         String[] etichette = new String[valori.length];
 
         for (int i = 0; i < valori.length; i++) {
-            etichette[i] = valori[i].getEtichetta();
+            etichette[i] = etichettaEnum(valori[i]) + " stagione";
         }
 
         return etichette;
@@ -366,7 +353,7 @@ public class GestoreStabilimento {
         String[] etichette = new String[tipi.size() + servizi.size()];
 
         for (int i = 0; i < tipi.size(); i++) {
-            etichette[i] = "Ombrellone — " + tipi.get(i).getEtichetta();
+            etichette[i] = "Ombrellone — " + etichettaEnum(tipi.get(i));
         }
         for (int i = 0; i < servizi.size(); i++) {
             etichette[tipi.size() + i] = "Servizio — " + servizi.get(i).getDescrizione();
@@ -535,10 +522,11 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Nome della stagione in cui cade la data scelta.
+     * Nome della stagione in cui cade la data scelta, derivato dal nome della
+     * costante enum con il suffisso " stagione".
      */
     public static String getNomeStagione(LocalDate data) {
-        return stagionePerData(data).getEtichetta();
+        return etichettaEnum(stagionePerData(data)) + " stagione";
     }
 
     /*
@@ -557,12 +545,9 @@ public class GestoreStabilimento {
         return ombrelloni;
     }
 
-    /* EFFETTUA PRENOTAZIONE
-     *
-     * Operazioni del caso d'uso Effettua Prenotazione (estensione di
-     * Visualizzazione Mappa). Il Boundary identifica cliente, ombrellone e
-     * servizi con valori semplici (email, id)
-
+    /*
+     * EFFETTUA PRENOTAZIONE (per GestorePrenotazioni)
+     */
 
     /*
      * Servizi prenotabili per la data: una riga per servizio, con chiavi
@@ -589,8 +574,7 @@ public class GestoreStabilimento {
 
     /*
      * Servizi che il cliente può prenotare per la data scelta: quelli con
-     * disponibilità residua positiva e con una tariffa definita per la stagione
-     * di quella data.
+     * disponibilità residua positiva e con una tariffa definita per la stagione di quella data
      */
     private static List<ServizioAggiuntivo> serviziSelezionabili(LocalDate data) {
         RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
@@ -610,8 +594,8 @@ public class GestoreStabilimento {
 
     /*
      * Prezzo totale della prenotazione: ombrellone + servizi per le rispettive
-     * quantità (array paralleli), alla stagione della data. Le tariffe non
-     * definite (-1) non incidono sul totale.
+     * quantità (array paralleli), alla stagione della data.
+     * Le tariffe non definite (-1) non incidono sul totale.
      */
     public static double getPrezzoTotale(long idOmbrellone, long[] idServiziScelti,
                                          int[] quantita, LocalDate data) {
@@ -636,8 +620,8 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Prezzo dell'ombrellone dal tipo della sua fila per la stagione della
-     * data. Restituisce -1 se la tariffa non è definita o l'ombrellone non esiste.
+     * Prezzo dell'ombrellone dal tipo della sua fila per la stagione della data
+     * Restituisce -1 se la tariffa non è definita o l'ombrellone non esiste.
      */
     private static double prezzoOmbrellone(long idOmbrellone, LocalDate data) {
         Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
@@ -650,79 +634,19 @@ public class GestoreStabilimento {
     }
 
     /*
-     * Trova il cliente e l'ombrellone e costruisce la mappa
-     * servizio→quantità. Verifica i conflitti interrogando il RegistroPrenotazioni
-     * per la disponibilità dell'ombrellone e il residuo dei servizi. Restituisce
-     * l'esito in un codice per il Boundary e delega la creazione al Registro.
+     * Ombrellone per id. Esposto a GestorePrenotazioni, che compone la
+     * prenotazione senza accedere direttamente al RegistroOmbrelloni.
      */
-    public static int effettuaPrenotazione(String emailCliente, long idOmbrellone,
-                                           LocalDate data, long[] idServiziScelti, int[] quantita) {
-
-        if (emailCliente == null || data == null) {
-            return DATI_PRENOTAZIONE_NON_VALIDI;
-        }
-
-        if ((idServiziScelti == null) != (quantita == null)
-                || (idServiziScelti != null && idServiziScelti.length != quantita.length)) {
-            return DATI_PRENOTAZIONE_NON_VALIDI;
-        }
-
-        Cliente cliente = clientePerEmail(emailCliente);
-        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
-
-        if (cliente == null || ombrellone == null) {
-            return DATI_PRENOTAZIONE_NON_VALIDI;
-        }
-
-        Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
-        if (idServiziScelti != null) {
-            for (int i = 0; i < idServiziScelti.length; i++) {
-                if (quantita[i] <= 0) {
-                    continue;
-                }
-                ServizioAggiuntivo servizio =
-                        new RegistroServiziAggiuntivi().trovaServizio(idServiziScelti[i]);
-                if (servizio == null) {
-                    return DATI_PRENOTAZIONE_NON_VALIDI;
-                }
-                quantitaServizi.put(servizio, quantita[i]);
-            }
-        }
-
-
-        double totale = getPrezzoTotale(idOmbrellone, idServiziScelti, quantita, data);
-
-        RegistroPrenotazioni registroPrenotazioni = new RegistroPrenotazioni();
-
-        if (registroPrenotazioni.isOmbrelloneOccupato(ombrellone, data)) {
-            // Estensione 2.a: ombrellone già occupato per la data scelta.
-            return OMBRELLONE_NON_DISPONIBILE;
-        }
-        if (registroPrenotazioni.servizioEsaurito(quantitaServizi, data) != null) {
-            // Estensione 3.1.a: residuo di un servizio selezionato insufficiente.
-            return SERVIZIO_ESAURITO;
-        }
-
-        try {
-            Prenotazione prenotazione = registroPrenotazioni
-                    .effettuaPrenotazione(cliente, ombrellone, data, quantitaServizi, totale);
-            if (prenotazione == null) {
-                return ERRORE_PRENOTAZIONE;
-            }
-
-            return PRENOTAZIONE_OK;
-
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            return ERRORE_PRENOTAZIONE;
-        }
+    public static Ombrellone trovaOmbrellone(long id) {
+        return new RegistroOmbrelloni().trovaOmbrellone(id);
     }
 
-
-    private static Cliente clientePerEmail(String email) {
-        return new RegistroUtenti().cercaUtentePerEmail(email) instanceof Cliente cliente
-                ? cliente
-                : null;
+    /*
+     * Servizio aggiuntivo per id. Esposto a GestorePrenotazioni per le stesse
+     * ragioni di trovaOmbrellone.
+     */
+    public static ServizioAggiuntivo trovaServizio(long id) {
+        return new RegistroServiziAggiuntivi().trovaServizio(id);
     }
 
     private static double costoTipoFila(TipoFila tipo, Stagione stagione) {
@@ -744,242 +668,4 @@ public class GestoreStabilimento {
         return -1;
     }
 
-    /* GESTIONE PRENOTAZIONI PERSONALI
-     *
-     * Operazioni del caso d'uso Gestione prenotazioni personali (attore
-     * ClienteAutenticato): consultazione dello storico e annullamento entro il
-     * limite temporale. Il Boundary identifica il cliente con l'email e la
-    /* prenotazione con il suo id.
-
-    /*
-     * Storico del cliente: una riga per prenotazione, in
-     * ordine deterministico (per data, poi per id), con chiavi
-     *   "data"`: data prenotata;
-     *   "postazione": postazione scelta ("Ombrellone n. X (Fila Y)");
-     *   "servizi": servizi aggiuntivi con quantità, o "nessuno";
-     *   "stato": nome dello stato (Prenotata/Annullata);
-     *   "prezzo": prezzo totale;
-     *   "id": id della prenotazione;
-     *   "annullabile": true se l'annullamento è possibile (stato Prenotata e oggi < data), altrimenti false
-     */
-    public static List<Map<String, String>> getPrenotazioniCliente(String emailCliente) {
-        Cliente cliente = clientePerEmail(emailCliente);
-        if (cliente == null) {
-            return List.of();
-        }
-
-        List<Prenotazione> prenotazioni = new RegistroPrenotazioni().prenotazioniCliente(cliente);
-        prenotazioni.sort(Comparator.comparing(Prenotazione::getData)
-                .thenComparing(Prenotazione::getId));
-
-        LocalDate oggi = LocalDate.now();
-        List<Map<String, String>> righe = new ArrayList<>();
-
-        for (Prenotazione prenotazione : prenotazioni) {
-            LocalDate data = prenotazione.getData();
-            String servizi = descriviServizi(prenotazione);
-            StatoPrenotazione stato = prenotazione.getStato();
-
-            righe.add(Map.of(
-                    "data", (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "",
-                    "postazione", descriviPostazione(prenotazione),
-                    "servizi", servizi.isEmpty() ? "nessuno" : servizi,
-                    "stato", (stato != null) ? stato.nome() : "",
-                    "prezzo", String.valueOf(prenotazione.getPrezzoTotale()),
-                    "id", String.valueOf(prenotazione.getId()),
-                    "annullabile", String.valueOf(prenotazione.isAnnullabile(oggi))));
-        }
-
-        return righe;
-    }
-
-    /*
-     * Annullamento prenotazione.
-     * Ottiene cliente per email e prenotazione per id e verifica che la
-     * prenotazione appartenga a quel cliente e che sia annullabile entro il
-     * limite temporale. Delega al RegistroPrenotazioni la transizione ad
-     * Annullata e il salvataggio.
-     */
-    public static int annullaPrenotazione(String emailCliente, long idPrenotazione) {
-        if (emailCliente == null) {
-            return PRENOTAZIONE_NON_TROVATA;
-        }
-
-        Cliente cliente = clientePerEmail(emailCliente);
-        if (cliente == null) {
-            return PRENOTAZIONE_NON_TROVATA;
-        }
-
-        Prenotazione prenotazione =
-                new RegistroPrenotazioni().trovaPrenotazione(idPrenotazione);
-
-        // La prenotazione deve esistere ed essere del cliente richiedente.
-        if (prenotazione == null || !appartieneA(prenotazione, cliente)) {
-            return PRENOTAZIONE_NON_TROVATA;
-        }
-
-        // Estensione 3.2.a: oltre il limite temporale (o già annullata).
-        if (!prenotazione.isAnnullabile(LocalDate.now())) {
-            return LIMITE_TEMPORALE_SUPERATO;
-        }
-
-        try {
-            new RegistroPrenotazioni().annullaPrenotazione(prenotazione);
-
-            return ANNULLAMENTO_OK;
-
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            return ERRORE_ANNULLAMENTO;
-        }
-    }
-
-    /*
-     * Postazione scelta di una prenotazione ("Ombrellone n. X (Fila Y)"), oppure
-     * stringa vuota se non determinabile.
-     */
-    private static String descriviPostazione(Prenotazione prenotazione) {
-        Ombrellone ombrellone = prenotazione.getOmbrellone();
-        if (ombrellone == null) {
-            return "";
-        }
-
-        StringBuilder postazione = new StringBuilder();
-        postazione.append("Ombrellone n. ").append(ombrellone.getNumero());
-        if (ombrellone.getFila() != null) {
-            postazione.append(" (Fila ").append(ombrellone.getFila().getNumero()).append(')');
-        }
-
-        return postazione.toString();
-    }
-
-    /*
-     * Servizi aggiuntivi di una prenotazione, con quantità ("2 x Lettino,
-     * 1 x Cabina"), o stringa vuota se non ci sono servizi.
-     */
-    private static String descriviServizi(Prenotazione prenotazione) {
-        StringBuilder servizi = new StringBuilder();
-
-        for (Map.Entry<ServizioAggiuntivo, Integer> voce : prenotazione.getQuantitaServizi().entrySet()) {
-            if (servizi.length() > 0) {
-                servizi.append(", ");
-            }
-            servizi.append(voce.getValue()).append(" x ").append(voce.getKey().getDescrizione());
-        }
-
-        return servizi.toString();
-    }
-
-    /*
-     * Verifica che la prenotazione appartenga al cliente indicato
-     */
-    private static boolean appartieneA(Prenotazione prenotazione, Cliente cliente) {
-        return prenotazione.getCliente() != null
-                && prenotazione.getCliente().getId() != null
-                && prenotazione.getCliente().getId().equals(cliente.getId());
-    }
-
-    /*
-     * NOTIFICA
-     */
-
-    private static final DateTimeFormatter FORMATO_DATA_NOTIFICA =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    /*
-     * Body della notifica di conferma/annullamento.
-     * Il Boundary li richiede dopo l'esito OK e li passa al proprio Adapter.
-     */
-    public static String getMessaggioNotificaPrenotazione(String emailCliente, long idOmbrellone,
-                                                        LocalDate data, long[] idServizi, int[] quantita) {
-        Cliente cliente = clientePerEmail(emailCliente);
-        Ombrellone ombrellone = new RegistroOmbrelloni().trovaOmbrellone(idOmbrellone);
-        if (cliente == null || ombrellone == null) {
-            return null;
-        }
-
-        Map<ServizioAggiuntivo, Integer> quantitaServizi = new LinkedHashMap<>();
-        if (idServizi != null && quantita != null && idServizi.length == quantita.length) {
-            for (int i = 0; i < idServizi.length; i++) {
-                if (quantita[i] <= 0) {
-                    continue;
-                }
-                ServizioAggiuntivo servizio = new RegistroServiziAggiuntivi().trovaServizio(idServizi[i]);
-                if (servizio != null) {
-                    quantitaServizi.put(servizio, quantita[i]);
-                }
-            }
-        }
-
-        double totale = getPrezzoTotale(idOmbrellone, idServizi, quantita, data);
-        Prenotazione prenotazione = new Prenotazione(data, ombrellone, null, cliente,
-                quantitaServizi, null, totale);
-        return componiCorpoConferma(prenotazione);
-    }
-
-    public static String getMessaggioNotificaAnnullamento(String emailCliente, long idPrenotazione) {
-        Cliente cliente = clientePerEmail(emailCliente);
-        if (cliente == null) {
-            return null;
-        }
-        Prenotazione prenotazione = new RegistroPrenotazioni().trovaPrenotazione(idPrenotazione);
-        if (prenotazione == null || !appartieneA(prenotazione, cliente)) {
-            return null;
-        }
-        return componiCorpoAnnullamento(prenotazione);
-    }
-
-    /*
-     * Testo della conferma.
-     */
-    private static String componiCorpoConferma(Prenotazione prenotazione) {
-        StringBuilder corpo = new StringBuilder();
-        intestazione(corpo, prenotazione.getCliente());
-        corpo.append("la sua prenotazione è confermata.\n");
-        corpo.append("Ombrellone n. ").append(numeroOmbrellone(prenotazione)).append('\n');
-        if (prenotazione.getData() != null) {
-            corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA_NOTIFICA)).append('\n');
-        }
-
-        Map<ServizioAggiuntivo, Integer> quantitaServizi = prenotazione.getQuantitaServizi();
-        if (quantitaServizi != null && !quantitaServizi.isEmpty()) {
-            corpo.append("Servizi aggiuntivi:\n");
-            for (Map.Entry<ServizioAggiuntivo, Integer> voce : quantitaServizi.entrySet()) {
-                int q = voce.getValue() != null ? voce.getValue() : 0;
-                corpo.append("  - ").append(q).append(" x ")
-                        .append(voce.getKey().getDescrizione()).append('\n');
-            }
-        }
-
-        corpo.append("Totale: ").append(String.format("€ %.2f", prenotazione.getPrezzoTotale())).append('\n');
-        return corpo.toString();
-    }
-
-    /*
-     * Testo dell'annullamento.
-     */
-    private static String componiCorpoAnnullamento(Prenotazione prenotazione) {
-        StringBuilder corpo = new StringBuilder();
-        intestazione(corpo, prenotazione.getCliente());
-        corpo.append("la sua prenotazione è stata annullata.\n");
-        corpo.append("Ombrellone n. ").append(numeroOmbrellone(prenotazione)).append('\n');
-        if (prenotazione.getData() != null) {
-            corpo.append("Data: ").append(prenotazione.getData().format(FORMATO_DATA_NOTIFICA)).append('\n');
-        }
-        return corpo.toString();
-    }
-
-    /*
-     * Riga di saluto iniziale.
-     */
-    private static void intestazione(StringBuilder corpo, Cliente cliente) {
-        if (cliente != null && cliente.getNome() != null) {
-            corpo.append("Gentile ").append(cliente.getNome())
-                    .append(' ').append(cliente.getCognome()).append(",\n");
-        }
-    }
-
-    private static int numeroOmbrellone(Prenotazione prenotazione) {
-        return prenotazione.getOmbrellone() != null ? prenotazione.getOmbrellone().getNumero() : 0;
-    }
 }

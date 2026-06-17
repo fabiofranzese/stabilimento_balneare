@@ -2,6 +2,7 @@ package controller;
 
 import entity.Cliente;
 import entity.Gestore;
+import entity.RegistroPrenotazioni;
 import entity.RegistroUtenti;
 import entity.Utente;
 
@@ -78,6 +79,18 @@ public class GestoreUtenti {
         }
 
         return CREDENZIALI_ERRATE;
+    }
+
+    /*
+     * Cliente per email, con lo storico delle sue prenotazioni già caricato in
+     * cliente.prenotazioni. Restituisce null se l'email non è di un cliente.
+     */
+    public static Cliente trovaCliente(String email) {
+        if (new RegistroUtenti().cercaUtentePerEmail(email) instanceof Cliente cliente) {
+            cliente.setPrenotazioni(new RegistroPrenotazioni().prenotazioniCliente(cliente));
+            return cliente;
+        }
+        return null;
     }
 
     /*

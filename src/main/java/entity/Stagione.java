@@ -5,16 +5,6 @@ package entity;
  */
 public enum Stagione {
 
-    ALTA("Alta stagione"),
-    BASSA("Bassa stagione");
-
-    private final String etichetta;
-
-    Stagione(String etichetta) {
-        this.etichetta = etichetta;
-    }
-
-    public String getEtichetta() {
-        return etichetta;
-    }
+    ALTA,
+    BASSA;
 }
