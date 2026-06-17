@@ -82,9 +82,26 @@ public class Prenotazione {
         return riga;
     }
 
+    /*
+     * Una prenotazione è "attiva" (occupa la postazione) finché è nello stato Prenotata.
+     */
+    public boolean isAttiva() {
+        return stato instanceof Prenotata;
+    }
+
+    /*
+     * Annullabile se è ancora Prenotata e la data odierna precede la data prenotata.
+     */
     public boolean isAnnullabile(LocalDate oggi) {
-        return stato != null && stato.isAnnullabile()
+        return stato instanceof Prenotata
                 && oggi != null && data != null && oggi.isBefore(data);
+    }
+
+    /*
+     * Nome leggibile dello stato corrente (per la GUI), letto dall'oggetto-stato.
+     */
+    public String nomeStato() {
+        return stato != null ? stato.getClass().getSimpleName() : null;
     }
 
     /*
@@ -183,7 +200,7 @@ public class Prenotazione {
     public String toString() {
         return "Prenotazione{id=" + id + ", data=" + data
                 + ", ombrellone=" + (ombrellone != null ? ombrellone.getNumero() : null)
-                + ", stato=" + (stato != null ? stato.nome() : null)
+                + ", stato=" + nomeStato()
                 + ", cliente=" + (cliente != null ? cliente.getEmail() : null)
                 + ", servizi=" + serviziPrenotati.size()
                 + ", prezzoTotale=" + prezzoTotale + '}';

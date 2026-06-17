@@ -3,25 +3,13 @@ package entity;
 /*
  * Stato concreto di una prenotazione annullata.
  */
-public class Annullata extends StatoPrenotazione {
+public class Annullata implements StatoPrenotazione {
 
-    @Override
-    public boolean isAttiva() {
-        return false;
-    }
-
-    @Override
-    public boolean isAnnullabile() {
-        return false;
-    }
-
+    /*
+     * Una prenotazione già annullata ignora l'evento: nessuna transizione prevista.
+     */
     @Override
     public void annulla(Prenotazione prenotazione) {
         // nessuna transizione prevista.
-    }
-
-    @Override
-    public String nome() {
-        return "Annullata";
     }
 }

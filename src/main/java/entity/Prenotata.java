@@ -3,25 +3,14 @@ package entity;
 /*
  * Stato concreto di una prenotazione attiva.
  */
-public class Prenotata extends StatoPrenotazione {
+public class Prenotata implements StatoPrenotazione {
 
-    @Override
-    public boolean isAttiva() {
-        return true;
-    }
-
-    @Override
-    public boolean isAnnullabile() {
-        return true;
-    }
-
+    /*
+     * Dallo stato "prenotata" l'annullamento esegue la transizione: lo stato
+     * concreto costruisce il successore e lo assegna al Context.
+     */
     @Override
     public void annulla(Prenotazione prenotazione) {
         prenotazione.setStato(new Annullata());
-    }
-
-    @Override
-    public String nome() {
-        return "Prenotata";
     }
 }

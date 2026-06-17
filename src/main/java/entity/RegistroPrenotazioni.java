@@ -30,7 +30,7 @@ public class RegistroPrenotazioni {
         criteri.put("data", data);
 
         for (Prenotazione p : gestorePersistenza.cercaPerCampi(Prenotazione.class, criteri)) {
-            if (p.getStato() != null && p.getStato().isAttiva()) {
+            if (p.isAttiva()) {
                 return true;
             }
         }
@@ -43,7 +43,7 @@ public class RegistroPrenotazioni {
      */
     public boolean isPrenotazioniAttivePresenti() {
         for (Prenotazione p : gestorePersistenza.cercaPerCampi(Prenotazione.class, Map.of())) {
-            if (p.getStato() != null && p.getStato().isAttiva()) {
+            if (p.isAttiva()) {
                 return true;
             }
         }
@@ -151,7 +151,7 @@ public class RegistroPrenotazioni {
         List<Prenotazione> attive = new ArrayList<>();
 
         for (Prenotazione p : gestorePersistenza.cercaPerCampo(Prenotazione.class, "data", data)) {
-            if (p.getStato() != null && p.getStato().isAttiva()) {
+            if (p.isAttiva()) {
                 attive.add(p);
             }
         }

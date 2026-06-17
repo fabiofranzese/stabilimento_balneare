@@ -6,7 +6,6 @@ import entity.Prenotazione;
 import entity.RegistroPrenotazioni;
 import entity.ServizioAggiuntivo;
 import entity.ServizioPrenotato;
-import entity.StatoPrenotazione;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -199,13 +198,13 @@ public class GestorePrenotazioni {
         for (Prenotazione prenotazione : prenotazioni) {
             LocalDate data = prenotazione.getData();
             String servizi = descriviServizi(prenotazione);
-            StatoPrenotazione stato = prenotazione.getStato();
+            String stato = prenotazione.nomeStato();
 
             righe.add(Map.of(
                     "data", (data != null) ? data.format(FORMATO_DATA_PRENOTAZIONE) : "",
                     "postazione", descriviPostazione(prenotazione),
                     "servizi", servizi.isEmpty() ? "nessuno" : servizi,
-                    "stato", (stato != null) ? stato.nome() : "",
+                    "stato", (stato != null) ? stato : "",
                     "prezzo", String.valueOf(prenotazione.getPrezzoTotale()),
                     "id", String.valueOf(prenotazione.getId()),
                     "annullabile", String.valueOf(prenotazione.isAnnullabile(oggi))));
