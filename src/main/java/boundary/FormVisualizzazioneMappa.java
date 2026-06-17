@@ -42,7 +42,8 @@ public class FormVisualizzazioneMappa {
     private long idOmbrelloneSelezionato = -1;
     private int numeroSelezionato = -1;
     private String etichettaFilaSelezionata;
-    private boolean ombrellonePrenotabile = false;
+    private int indiceFilaSelezionato = -1;
+    private boolean ombrelloneSelezionatoDisponibile = false;
 
     public FormVisualizzazioneMappa(JFrame finestraChiamante, String emailCliente) {
         this.finestraChiamante = finestraChiamante;
@@ -173,14 +174,16 @@ public class FormVisualizzazioneMappa {
     }
 
     /*
-     * Mostra i dettagli dell'ombrellone selezionato e abilita "Prenota" se è disponibile.
+     * Mostra i dettagli dell'ombrellone selezionato; l'eventuale impossibilità di
+     * prenotare viene segnalata al click su "Prenota".
      */
     private void selezionaOmbrellone(int indiceFila, long id, int numero,
                                      String etichettaFilaTesto, boolean disponibile) {
         idOmbrelloneSelezionato = id;
         numeroSelezionato = numero;
         etichettaFilaSelezionata = etichettaFilaTesto;
-        ombrellonePrenotabile = false;
+        indiceFilaSelezionato = indiceFila;
+        ombrelloneSelezionatoDisponibile = disponibile;
 
         etichettaNumero.setText("Ombrellone n. " + numero);
         etichettaFila.setText(etichettaFilaTesto);
@@ -189,7 +192,6 @@ public class FormVisualizzazioneMappa {
             // Occupato per la data scelta: non si mostra il prezzo.
             etichettaDisponibilita.setText("Stato: Non disponibile");
             etichettaPrezzo.setText("Non disponibile");
-            bottonePrenota.setEnabled(false);
             return;
         }
 
@@ -199,22 +201,37 @@ public class FormVisualizzazioneMappa {
             // Disponibile ma senza tariffa per la stagione: non si può prenotare.
             etichettaDisponibilita.setText("Stato: Disponibile");
             etichettaPrezzo.setText("Tariffa non disponibile");
-            bottonePrenota.setEnabled(false);
             return;
         }
 
         etichettaDisponibilita.setText("Stato: Disponibile");
         etichettaPrezzo.setText("Prezzo (" + GestoreStabilimento.getNomeStagione(dataCorrente)
                 + "): " + String.format("€ %.2f", prezzo));
-        ombrellonePrenotabile = true;
-        bottonePrenota.setEnabled(true);
     }
 
     /*
      * Punto di estensione verso il caso d'uso Effettua Prenotazione.
+     * Se la precondizione non è soddisfatta, segnala il motivo con una dialog.
      */
     private void prenota() {
-        if (!ombrellonePrenotabile || idOmbrelloneSelezionato < 0) {
+        if (idOmbrelloneSelezionato < 0) {
+            JOptionPane.showMessageDialog(frame,
+                    "Seleziona un ombrellone dalla mappa.",
+                    "Nessuna selezione", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!ombrelloneSelezionatoDisponibile) {
+            JOptionPane.showMessageDialog(frame,
+                    "Questo ombrellone è già occupato per la data scelta.\n"
+                            + "Scegli una postazione disponibile sulla mappa.",
+                    "Ombrellone non disponibile", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (GestoreStabilimento.getPrezzoFila(indiceFilaSelezionato, dataCorrente) < 0) {
+            JOptionPane.showMessageDialog(frame,
+                    "La tariffa per questa fila non è ancora stata definita.\n"
+                            + "Non è possibile prenotare finché il gestore non la imposta.",
+                    "Tariffa non disponibile", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -228,12 +245,12 @@ public class FormVisualizzazioneMappa {
         idOmbrelloneSelezionato = -1;
         numeroSelezionato = -1;
         etichettaFilaSelezionata = null;
-        ombrellonePrenotabile = false;
+        indiceFilaSelezionato = -1;
+        ombrelloneSelezionatoDisponibile = false;
         etichettaNumero.setText("Ombrellone n. -");
         etichettaFila.setText("Fila -");
         etichettaPrezzo.setText("Prezzo -");
         etichettaDisponibilita.setText("Stato: -");
-        bottonePrenota.setEnabled(false);
     }
 
     private LocalDate leggiData() {
