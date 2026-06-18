@@ -9,16 +9,6 @@ import java.util.Objects;
  * ServizioPrenotato è la classe associativa dell'associazione "include" tra
  * Prenotazione e ServizioAggiuntivo: rappresenta una riga "quel servizio, in
  * quella prenotazione, in quella quantità".
- *
- * Identità: la chiave primaria è composta dalle due chiavi esterne
- * (prenotazione_id, servizio_id) tramite @IdClass, senza un id surrogato. Ne
- * consegue l'invariante che uno stesso servizio compare al più una volta per
- * prenotazione (le unità stanno in "quantita", mai righe duplicate).
- *
- * Navigabilità (scelta progettuale, non imposta dalla classe associativa):
- * ServizioPrenotato -> Prenotazione e ServizioPrenotato -> ServizioAggiuntivo
- * (obbligatorie, sono la chiave); Prenotazione -> ServizioPrenotato è navigabile
- * (lista lato Prenotazione); ServizioAggiuntivo non ha il lato inverso.
  */
 @Entity
 @IdClass(ServizioPrenotato.Chiave.class)
