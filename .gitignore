@@ -44,6 +44,9 @@ src/main/resources/META-INF/persistence.xml
 # Contiene le credenziali SMTP (Brevo); usare email.properties.template come riferimento.
 src/main/resources/email.properties
 
+.claude/
+CLAUDE.md
+
 ### References ###
 docs/
 ### Mac OS ###
